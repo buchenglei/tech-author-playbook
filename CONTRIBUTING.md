@@ -58,6 +58,24 @@ python3 writing-rules/tools/sync_handoff.py books/how-to-write-a-tech-book
 
   脚本会在 `handoff/00_README.md` 写入本次同步时间（拷贝时间点）。
 
+## 闭眼产出标准结构（Agent 请走这条）
+
+```bash
+# 1) 脚手架（目录名与 G0–G7 一致）
+python3 writing-rules/tools/init_book.py my-book --title "书名" --claim "可证伪承诺"
+
+# 2) 写作：按 kit/stage_prompts.md 填 01–08，units/Cxx-Sy.spec.md 先于 .md
+
+# 3) 一条命令装配成可编译书稿（units → chapters/chN.typ → config.toml）
+python3 writing-rules/tools/assemble_book.py books/my-book \
+  --engine techbook-typst --out techbook-typst/chapters --compile
+
+# 变体：输出到书稿自己的 chapters/（薄项目），不改引擎 config
+python3 writing-rules/tools/assemble_book.py books/my-book
+```
+
+约定：第 N 章文件名固定为 `chapters/chN.typ`；无正文的章也会生成占位骨架，保证能编译。
+
 ## 测试
 
 ```bash

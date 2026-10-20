@@ -46,21 +46,21 @@ path = "chapters/preface.typ"
 note = "前言"
 
 [[chapters]]
-path = "chapters/ch1-why.typ"
+path = "chapters/ch1.typ"
 note = "第1章 读者为什么把书放下"
 
 [[chapters]]
-path = "chapters/ch2-promise.typ"
+path = "chapters/ch2.typ"
 note = "第2章 承诺：从主题到可验证契约"
 
 [[chapters]]
-path = "chapters/ch3-skeleton.typ"
+path = "chapters/ch3.typ"
 note = "第3章 骨架：从承诺到可跳读目录"
 
 [[chapters]]
-path = "chapters/ch4-deliver.typ"
+path = "chapters/ch4.typ"
 note = "第4章 成书：断言、冻结与交接"
 
 [[chapters]]
 path = "chapters/appendix-a.typ"
-note = "附录 速查：预判判据与交接清单"
+note = "附录 速查"

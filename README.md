@@ -57,7 +57,7 @@ tech-author-playbook/
 │   ├── 技术书籍写作规范_v1.md  # 导航入口（正文在 spec/）
 │   ├── spec/                 # 规范分片 00–10 + 附录 A–H
 │   ├── 如何改规范.md          # 改规则/阈值/门禁指南
-│   ├── tools/                # spec_lint / build_spec / sync_handoff / tests
+│   ├── tools/                # spec_lint / init_book / assemble_book / sync_handoff / tests
 │   └── kit/                  # 立项卡、大纲、单元 spec、台账、术语、提示词…
 └── techbook-typst/           # 排版成书：Typst 基础库 + 样书 + 构建
     ├── AGENTS.md             # ★ 排版作业契约（写书/改书必读）
@@ -117,7 +117,9 @@ S0 立项 ──► S1 读者 ──► S2 大纲
             交接 / 出版  ◄────  dist/book.pdf + 校验清单
 ```
 
-金样板已跑通：`books/how-to-write-a-tech-book/`（G0–G7 通过，状态 draft）→ `techbook-typst/chapters/` → `dist/book.pdf`。
+金样板已跑通：`books/how-to-write-a-tech-book/`（G0–G7 通过，状态 draft）→ `assemble_book.py` → `techbook-typst/chapters/chN.typ` → `dist/book.pdf`。
+
+闭眼流水线：`init_book.py` 建工程 → 写 `units/` → `assemble_book.py --compile` 出 PDF。
 
 | 阶段 | 内容线产出 | 排版线动作 |
 | --- | --- | --- |

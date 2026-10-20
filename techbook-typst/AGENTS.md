@@ -370,6 +370,6 @@ typst compile --root . --input doc=other/config.toml main.typ dist/other.pdf
 
 ## 12. 样书即文档
 
-- `chapters/preface.typ` + `ch1-why` … `ch4-deliver` + `appendix-a` 演示常用结构与组件（样书《如何写一本技术书》）。
+- `chapters/preface.typ` + `ch1.typ`…`ch4.typ` + `appendix-a.typ` 演示常用结构与组件（样书《如何写一本技术书》，由 assemble_book.py 装配）。
 - 对照源文件与 `dist/book.pdf` 学习调用方式；正文由 `tools/md2typ.py` 从写作单元装配。
 - 新书可用 `nu build.nu init` 得到最小骨架（`src/template/`）。

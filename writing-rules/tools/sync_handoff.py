@@ -24,7 +24,8 @@ import sys
 from pathlib import Path
 
 COPIES = {
-    "02_outline.json": "02_outline.json",
+    # handoff 六文件命名与 G6 一致（01_outline / 02_glossary / 03_ledger）
+    "02_outline.json": "01_outline.json",
     "06_glossary.json": "02_glossary.json",
     "04_ledger.csv": "03_ledger.csv",
 }

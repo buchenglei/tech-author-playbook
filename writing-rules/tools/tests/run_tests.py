@@ -170,7 +170,26 @@ def main() -> int:
         (b / "handoff" / "00_README.md").write_text("# r\n", encoding="utf-8")
         r = run([sys.executable, str(SYNC), str(b)])
         st = (b / "handoff" / "00_README.md").read_text(encoding="utf-8")
-        check("sync_handoff 拷贝并打戳", r.returncode == 0 and "最近同步" in st and (b / "handoff" / "02_outline.json").is_file(), r.stdout + r.stderr)
+        check("sync_handoff 拷贝并打戳", r.returncode == 0 and "最近同步" in st and (b / "handoff" / "01_outline.json").is_file(), r.stdout + r.stderr)
+
+    print("== init_book / assemble_book ==")
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        init = ROOT / "writing-rules" / "tools" / "init_book.py"
+        asm = ROOT / "writing-rules" / "tools" / "assemble_book.py"
+        r = run([sys.executable, str(init), "t-book", "--title", "T", "--claim",
+                 "在条件 C 下机制 M 导致 R，反例是 X", "--dest", str(td)])
+        b = td / "t-book"
+        check("init_book 生成标准文件", r.returncode == 0 and (b / "02_outline.json").is_file()
+              and (b / "units").is_dir() and (b / "handoff").is_dir(), r.stdout + r.stderr)
+        code, out = gate("G0", b)
+        check("init_book 后 G0 可过", code == 0, out)
+        r = run([sys.executable, str(asm), str(b), "--engine", str(ROOT / "techbook-typst"),
+                 "--out", str(b / "chapters")])
+        check("assemble 出 chapters", r.returncode == 0 and (b / "chapters" / "ch1.typ").is_file()
+              and (b / "chapters" / "preface.typ").is_file(), r.stdout + r.stderr)
+        check("assemble 不乱写引擎 config", (b / "chapters" / "chapters.manifest").is_file()
+              or "跳过 config" in r.stdout, r.stdout)
 
     print("== 金样板 smoke ==")
     if BOOK.is_dir():
