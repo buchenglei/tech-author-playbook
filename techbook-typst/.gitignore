@@ -1,0 +1,24 @@
+# ---- 输出（唯一产物目录）----
+dist/
+*.pdf
+*.png
+
+# ---- 字体（可选本地放置）----
+fonts/*
+!fonts/.gitkeep
+
+# ---- 系统 / 工具 ----
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.mimocode/
+.claude/
+.idea/
+.vscode/
+
+# ---- 临时 ----
+*.tmp
+*.log
+*.err
+out/

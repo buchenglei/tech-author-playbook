@@ -1,0 +1,44 @@
+{
+  "_说明": "§1.1 立项卡。字段名不得改动（B-01）。任一字段为空或缺失，G0 不通过——这是设计意图，不是模板缺陷。",
+  "_填法": "claim 写成可证伪的断言句，不写主题名；scope_out 至少 3 条且每条给理由；sources 至少 3 条 E1，url 与 locator 都要填；kill_criteria 至少 2 条且可判定。",
+
+  "title": "",
+  "claim": "",
+  "increment": "",
+  "_increment_取值": "判断 / 联结 / 经验 / 系统化 / 时效 / 表达，六选一（§1.2）",
+  "increment_note": "具体多在哪里：与现有资料相比，这本书多提供了什么",
+
+  "reader_before": "",
+  "reader_after": [
+    "",
+    ""
+  ],
+  "prerequisites": [
+    {"item": "", "fallback": "这条不会时先补什么"}
+  ],
+
+  "scope_in": [],
+  "scope_out": [
+    {"item": "", "reason": ""},
+    {"item": "", "reason": ""},
+    {"item": "", "reason": ""}
+  ],
+
+  "sources": [
+    {"title": "", "url": "", "version": "", "locator": "", "type": "E1"},
+    {"title": "", "url": "", "version": "", "locator": "", "type": "E1"},
+    {"title": "", "url": "", "version": "", "locator": "", "type": "E1"}
+  ],
+
+  "risk": [
+    {"item": "", "review_by": "2027-01"}
+  ],
+
+  "kill_criteria": [
+    "",
+    ""
+  ],
+
+  "family": "B",
+  "_family_取值": "A 可测量 / B 工具语言 / C 概念设计 / mixed（混族按章标注）"
+}

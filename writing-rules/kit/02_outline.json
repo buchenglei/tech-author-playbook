@@ -1,0 +1,130 @@
+{
+  "_说明": "可直接跑 G2 的示例结构。正式项目把标题、purpose、produces 全部替换为真实内容；字段名与层级保持不变。",
+
+  "book": {
+    "title": "连接池的三种死法",
+    "type": "原理书",
+    "claim": "连接池故障的多数误判源于只观察等待时间而不观察连接生命周期，按借出、占用、归还三段分层，可在五分钟内区分四类根因",
+    "target_words": 160000,
+    "family": "B",
+    "review_by": "2027-06"
+  },
+
+  "volumes": [
+    {
+      "id": "V1",
+      "title": "从现象到分层",
+      "purpose": "把偶发超时拆成可以分别验证的三段",
+      "chapters": ["C01", "C02"]
+    }
+  ],
+
+  "chapters": [
+    {
+      "id": "C01",
+      "title": "等待时间告诉你的与没告诉你的",
+      "purpose": "读者能判断手上的超时是否属于连接池问题",
+      "produces": "一张四分支判别表，每条分支对应一条验证命令",
+      "role": {"phenomenon": "C01-S1", "mechanism": "C01-S2", "cost": "C01-S3"},
+      "requires": [],
+      "words": 14000,
+      "sections": [
+        {
+          "id": "C01-S1",
+          "title": "平均值 8 ms，P99 是 1.4 s",
+          "question": "为什么平均值正常而尾部延迟差了两个数量级",
+          "produces": "一条采样命令与它的真实输出",
+          "bridge": "开篇，承接书名承诺",
+          "layer": "现象",
+          "concepts": ["P99", "采样窗口"],
+          "deps": [],
+          "words": 3200,
+          "status": "planned"
+        },
+        {
+          "id": "C01-S2",
+          "title": "第 11 个请求去哪了",
+          "question": "连接用尽时请求是被拒绝还是被排队",
+          "produces": "连接从借出到归还的状态图",
+          "bridge": "上一节确认了尾部异常，但没解释异常从哪里产生",
+          "layer": "机制",
+          "concepts": ["借出", "等待队列", "超时断开"],
+          "deps": ["C01-S1"],
+          "words": 4600,
+          "status": "planned"
+        },
+        {
+          "id": "C01-S3",
+          "title": "调到 50 之后，数据库开始排队",
+          "question": "调大上限换来的延迟下降，代价落在谁身上",
+          "produces": "一组调参前后的对比数据与代价说明",
+          "bridge": "上一节的机制解释了超时，但没说明调大上限为何不是解",
+          "layer": "代价",
+          "concepts": ["并发连接数", "数据库侧排队"],
+          "deps": ["C01-S2"],
+          "words": 3800,
+          "status": "planned"
+        }
+      ]
+    },
+    {
+      "id": "C02",
+      "title": "生命周期层：连接从生到死",
+      "purpose": "读者能定位泄漏点或占用点，而不是继续调参数",
+      "produces": "一个可复现的泄漏示例与其修复前后的对比",
+      "role": {"phenomenon": "C02-S1", "mechanism": "C02-S2", "cost": "C02-S3"},
+      "requires": ["C01"],
+      "words": 15000,
+      "sections": [
+        {
+          "id": "C02-S1",
+          "title": "连接数每小时涨一点，直到某个整点崩",
+          "question": "为什么故障总在整点前后出现",
+          "produces": "一段连接数随时间的真实曲线",
+          "bridge": "上一章把问题归到生命周期，本章拆开看两条路径",
+          "layer": "现象",
+          "concepts": ["连接数增长"],
+          "deps": ["C01-S3"],
+          "words": 3000,
+          "status": "planned"
+        },
+        {
+          "id": "C02-S2",
+          "title": "打开与归还的两条路径",
+          "question": "连接在哪些分支上被借出后没有归还",
+          "produces": "一个故意泄漏的最小示例与真实报错",
+          "bridge": "上一节的曲线指向泄漏，但没定位到具体分支",
+          "layer": "机制",
+          "concepts": ["异常路径", "会话级临时表"],
+          "deps": ["C02-S1"],
+          "words": 5200,
+          "status": "planned"
+        },
+        {
+          "id": "C02-S3",
+          "title": "加一个监控，还是改一行代码",
+          "question": "监控能否替代修复，什么条件下不能",
+          "produces": "一张取舍表：监控告警与代码修复的适用边界",
+          "bridge": "上一节找到了泄漏点，但修复方案不止一种",
+          "layer": "代价",
+          "concepts": ["空闲回收", "最大存活时间"],
+          "deps": ["C02-S2"],
+          "words": 4200,
+          "status": "planned"
+        }
+      ]
+    }
+  ],
+
+  "paths": [
+    {"name": "线性通读", "order": ["C01-S1", "C01-S2", "C01-S3", "C02-S1", "C02-S2", "C02-S3"]},
+    {"name": "带着故障来", "order": ["C01-S3", "C02-S2"]},
+    {"name": "只查命令", "order": ["C01-S1"]}
+  ],
+
+  "concepts": [
+    {"term": "P99", "first": "C01-S1", "used_in": ["C01-S2", "C01-S3"]},
+    {"term": "等待队列", "first": "C01-S2", "used_in": ["C01-S3", "C02-S2"]},
+    {"term": "空闲回收", "first": "C02-S3", "used_in": []}
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "_说明": "术语锚（§4.6）。首次出现即写入；改术语须三步同做（UNIT-13）。",
+  "terms": [
+    {
+      "term": "位移",
+      "def": "读者读完后能完成而读前不能完成的那件事",
+      "first_seen": "C01-S1",
+      "aliases_forbidden": ["提升", "进步", "收获"]
+    },
+    {
+      "term": "失效",
+      "def": "某个写作决定在特定条件下反而让读者读不下去",
+      "first_seen": "C01-S2",
+      "aliases_forbidden": ["问题", "毛病"]
+    },
+    {
+      "term": "放大链",
+      "def": "一类失效触发或加重另一类失效的因果路径",
+      "first_seen": "C01-S2",
+      "aliases_forbidden": ["连锁反应"]
+    },
+    {
+      "term": "预判判据",
+      "def": "只看目录与样章就能勾选的读完/读不完预测项",
+      "first_seen": "C01-S3",
+      "aliases_forbidden": ["检查表", "评估标准"]
+    },
+    {
+      "term": "承诺",
+      "def": "作者对读者读完后可验证变化的可证伪声明",
+      "first_seen": "C02-S1",
+      "aliases_forbidden": ["目标", "愿景"]
+    },
+    {
+      "term": "主题",
+      "def": "书要讨论的对象范围，不含读者变化",
+      "first_seen": "C02-S1",
+      "aliases_forbidden": ["题目", "话题"]
+    },
+    {
+      "term": "可证伪",
+      "def": "能构造出一种证据使该断言被判定为不成立",
+      "first_seen": "C02-S2",
+      "aliases_forbidden": ["可验证", "可测试"]
+    },
+    {
+      "term": "否决信号",
+      "def": "命中即停手或换角度的立项期危险标志",
+      "first_seen": "C02-S2",
+      "aliases_forbidden": ["风险提示"]
+    },
+    {
+      "term": "范围失控",
+      "def": "承诺覆盖面持续膨胀导致交付物无法收束",
+      "first_seen": "C02-S3",
+      "aliases_forbidden": ["范围蔓延"]
+    },
+    {
+      "term": "对称结构",
+      "def": "章节字数与层级高度雷同、由模板而非内容决定的骨架",
+      "first_seen": "C03-S1",
+      "aliases_forbidden": ["对称布局", "整齐结构"]
+    },
+    {
+      "term": "三层剥法",
+      "def": "现象、机制、代价逐层剥开问题的写作展开顺序",
+      "first_seen": "C03-S2",
+      "aliases_forbidden": ["三层结构"]
+    },
+    {
+      "term": "现象层",
+      "def": "给出可观察、略带意外的起点事实",
+      "first_seen": "C03-S2",
+      "aliases_forbidden": ["案例层"]
+    },
+    {
+      "term": "机制层",
+      "def": "拆开内部原因与关键路径的展开层",
+      "first_seen": "C03-S2",
+      "aliases_forbidden": ["原理层"]
+    },
+    {
+      "term": "代价层",
+      "def": "写出结论失效条件与取舍依据的展开层",
+      "first_seen": "C03-S2",
+      "aliases_forbidden": ["风险层"]
+    },
+    {
+      "term": "抽章测试",
+      "def": "假装删掉一章，检查后文依赖是否断链的结构检验",
+      "first_seen": "C03-S3",
+      "aliases_forbidden": ["删除测试"]
+    },
+    {
+      "term": "递进",
+      "def": "本节接住上一节留下的未解问题并推进一步",
+      "first_seen": "C03-S3",
+      "aliases_forbidden": ["深入", "进阶"]
+    },
+    {
+      "term": "自证",
+      "def": "由执行者自己宣布某项检查已经通过",
+      "first_seen": "C04-S1",
+      "aliases_forbidden": ["自检"]
+    },
+    {
+      "term": "三级校验",
+      "def": "L0 脚本、L1 证据自检、L2 人类交接的分工体系",
+      "first_seen": "C04-S1",
+      "aliases_forbidden": ["三层校验"]
+    },
+    {
+      "term": "断言分级",
+      "def": "按 E0–E3 标记事实来源并绑定句式的记账方式",
+      "first_seen": "C04-S2",
+      "aliases_forbidden": ["来源标注"]
+    },
+    {
+      "term": "台账",
+      "def": "逐条记录断言、来源与复现命令的账本",
+      "first_seen": "C04-S2",
+      "aliases_forbidden": ["来源表", "引用列表"]
+    },
+    {
+      "term": "冻结",
+      "def": "一节通过全部门禁后不再改内容、只许走变更登记",
+      "first_seen": "C04-S2",
+      "aliases_forbidden": ["定稿"]
+    },
+    {
+      "term": "交接包",
+      "def": "交给人类验收的六文件集合，含未验证声明",
+      "first_seen": "C04-S3",
+      "aliases_forbidden": ["交付物"]
+    },
+    {
+      "term": "不可委托",
+      "def": "无论进度多紧都不能留给「以后再验证」的事项",
+      "first_seen": "C04-S3",
+      "aliases_forbidden": ["必须完成"]
+    }
+  ]
+}

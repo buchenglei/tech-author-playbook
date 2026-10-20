@@ -1,0 +1,15 @@
+id,claim,level,source_title,url,version,locator,cmd,exit_code,output_hash,date,unit
+E-001,读者带着不同任务进入技术文档, E1,Diátaxis — A technical documentation framework,https://diataxis.fr/,2024,首页四象限 tutorials/how-to/reference/explanation,,,,2026-10-20,C01-S1
+E-002,技术文档风格要求短句与任务结构,E1,Google developer documentation style guide — Highlights,https://developers.google.com/style/highlights,2024-12,§Highlights,,,,2026-10-20,C01-S1
+E-003,写作指南把读者任务排在文笔之前,E1,Microsoft Writing Style Guide — Welcome,https://learn.microsoft.com/en-us/style-guide/welcome/,2024-11,Top 10 tips,,,,2026-10-20,C01-S1
+E-004,claim 必须可证伪且主题名不合格,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§1.1 claim 写法,,,,2026-10-20,C02-S1
+E-005,预判判据与三类失效一一对应,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§0.1 三层剥法与 §3,,,,2026-10-20,C01-S3
+E-006,TOP-01 要求 claim 可构造反例,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§1.6 门禁 G0,,,,2026-10-20,C02-S1
+E-007,立项卡四件互锁且 G0 检查字段,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§1.1 与 tools G0,,,,2026-10-20,C02-S2
+E-008,五种否决信号命中即停手,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§1.5 否决信号,,,,2026-10-20,C02-S2
+E-009,禁止对称填充且字数雷同可启发式提示,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§3.4 / UNIT-10 / L-SYM-01,,,,2026-10-20,C03-S1
+E-010,三层剥法与生成顺序证据优先,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§0.1 与 §4.4 六个位置,,,,2026-10-20,C03-S2
+E-011,bridge 与 deps 构成章间接口,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§3.4 STR-07/STR-08,,,,2026-10-20,C03-S3
+E-012,三级校验禁止 L2 自证,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§7.1 VER-01,,,,2026-10-20,C04-S1
+E-013,断言分 E0-E3 且等级绑定句式,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§1.3 断言来源等级,,,,2026-10-20,C04-S2
+E-014,五项不可委托与交接包六文件,E1,技术书籍写作规范 v1,repo:writing-rules/spec,1.0,§9.4 与 §9.7,,,,2026-10-20,C04-S3

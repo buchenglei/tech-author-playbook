@@ -1,0 +1,32 @@
+# ---- 系统 / 编辑器 ----
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+.mimocode/
+.claude/
+
+# ---- Python 工具链 ----
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# ---- 临时与日志 ----
+*.tmp
+*.log
+*.err
+out/
+/tmp/
+
+# ---- 全库编译产物（子目录 .gitignore 可再收紧）----
+dist/
+*.pdf
+# 图片只忽略构建目录，避免挡住将来 docs 插图
+dist/**/*.png
+out/**/*.png

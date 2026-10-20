@@ -1,0 +1,15 @@
+[package]
+name = "techbook"
+version = "0.4.0"
+entrypoint = "src/book.typ"
+authors = ["CodeBu"]
+license = "MIT"
+description = "专业技术书籍 Typst 基础库：B5 成书版式、书眉页码、图表编号、语义组件，面向 AI 与作者协作出书。"
+keywords = ["book", "technical book", "typst", "chinese", "cjk"]
+categories = ["book"]
+compiler = "0.15.0"
+exclude = ["tests/", "chapters/", "out/", "dist/", "config.toml", "main.typ", "build.nu", "*.pdf", "*.png"]
+
+[template]
+path = "src/template"
+entrypoint = "main.typ"

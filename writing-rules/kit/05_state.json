@@ -1,0 +1,28 @@
+{
+  "_说明": "唯一真源（§0.4）。恢复会话先读本文件，再读 outline.json。",
+
+  "book": "",
+  "stage": "S0",
+  "family": "B",
+  "last_unit": null,
+  "done_units": [],
+  "current_unit": null,
+  "blockers": [],
+  "retries": {},
+  "spec_defects": [],
+  "term_migrations": [],
+  "changes": [],
+  "gates": {
+    "G0": "pending", "G1": "pending", "G2": "pending",
+    "G3": "pending", "G4": "pending", "G5": "pending",
+    "G6": "pending", "G7": "pending"
+  },
+
+  "_字段约定": {
+    "last_unit": "最近一个 frozen 的单元 id，必须与 outline.json 一致（RULE-07）",
+    "retries": "规则ID → 连续失败次数；到 3 即停止修改并写 blocker（VER-03）",
+    "spec_defects": "本规范中无法判定的条目，降级记录（RULE-01）",
+    "changes": "{unit, change_type, rerun_scope, result}（VER-06）",
+    "blockers": "BLOCK 卡，格式见 §0.6"
+  }
+}

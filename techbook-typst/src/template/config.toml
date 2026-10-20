@@ -1,0 +1,45 @@
+# =============================================================================
+#  config.toml —— 书稿身份与版式
+# =============================================================================
+
+[doc]
+title = "我的技术书"
+subtitle = "副标题"
+authors = ["作者"]
+version = "v0.1"
+date = "2026-01-01"
+category = "技术写作"
+keywords = ["关键词"]
+abstract = "一两句话说清本书承诺：读者读完能做什么。"
+history = [
+  ["v0.1", "2026-01-01", "初稿", "作者"],
+]
+
+[layout]
+cover = true
+toc = true
+toc-depth = 2
+header = true
+chapter-pagebreak = true
+indent = "0em"
+paper = "jis-b5"
+
+[color]
+accent = "#1e3a8a"
+
+[code]
+theme = "github"
+theme-path = "themes/github.tmTheme"
+show-lang = true
+
+[fonts]
+sans = ["Microsoft YaHei", "PingFang SC", "Noto Sans SC"]
+mono = ["Maple Mono NF", "Maple Mono", "Cascadia Code", "Consolas"]
+
+[[chapters]]
+path = "chapters/ch1-intro.typ"
+note = "第1章"
+
+[[chapters]]
+path = "chapters/appendix-a.typ"
+note = "附录A（可选）"

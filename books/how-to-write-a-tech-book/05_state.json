@@ -1,0 +1,64 @@
+{
+  "_说明": "唯一真源（§0.4）。恢复会话先读本文件，再读 outline.json。",
+
+  "book": "如何写一本技术书",
+  "stage": "S7",
+  "family": "C",
+  "last_unit": "C04-S3",
+  "done_units": [
+    "C01-S1", "C01-S2", "C01-S3",
+    "C02-S1", "C02-S2", "C02-S3",
+    "C03-S1", "C03-S2", "C03-S3",
+    "C04-S1", "C04-S2", "C04-S3"
+  ],
+  "current_unit": null,
+  "blockers": [],
+  "retries": {},
+  "spec_defects": [
+    {
+      "rule_id": "G3/G5/G7",
+      "note": "原先只对目录下第一个 .md 做 manuscript 检查。本轮改为扫描 units/ 全部正文，G5 增加 frozen↔units 对齐。",
+      "date": "2026-10-20",
+      "status": "fixed"
+    },
+    {
+      "rule_id": "G1",
+      "note": "原先未实现。本轮补读者假设表、来源标记、起点动作清单检查。",
+      "date": "2026-10-20",
+      "status": "fixed"
+    },
+    {
+      "rule_id": "check_claims",
+      "note": "paragraphs() 返回三元组，check_claims 解包为二元，正文首次 lint 即崩溃。",
+      "date": "2026-10-20",
+      "status": "fixed"
+    },
+    {
+      "rule_id": "S-RULE-01",
+      "note": "manuscript 模式把规范规则 ID 引用当成未定义规则报 P0。改为 manuscript 不检查规则定义自洽。",
+      "date": "2026-10-20",
+      "status": "fixed"
+    },
+    {
+      "rule_id": "STR-06",
+      "note": "G2 原先只查 produces 不查 bridge，与规范不一致。已补。",
+      "date": "2026-10-20",
+      "status": "fixed"
+    }
+  ],
+  "term_migrations": [],
+  "changes": [],
+  "gates": {
+    "G0": "pass", "G1": "pass", "G2": "pass",
+    "G3": "pass", "G4": "n/a", "G5": "pass",
+    "G6": "pass", "G7": "pass"
+  },
+  "delivery_status": "draft",
+  "_字段约定": {
+    "last_unit": "最近一个 frozen 的单元 id，必须与 outline.json 一致（RULE-07）",
+    "retries": "规则ID → 连续失败次数；到 3 即停止修改并写 blocker（VER-03）",
+    "spec_defects": "本规范中无法判定的条目，降级记录（RULE-01）",
+    "changes": "{unit, change_type, rerun_scope, result}（VER-06）",
+    "blockers": "BLOCK 卡，格式见 §0.6"
+  }
+}
