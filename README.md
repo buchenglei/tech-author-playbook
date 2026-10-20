@@ -45,10 +45,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md). Copyrig
 ```text
 tech-author-playbook/
 ├── README.md                 ← 你在这里（AI 入口 / 任务路由）
+├── AGENTS.md                 ← ★ 仓库维护契约（改本库前必读）
 ├── LICENSE
 ├── PROBLEMS.md               ← 真书流程暴露的问题与工程修法
 ├── books/                    # 金样板书稿（writing-rules 实战工程）
-│   └── 如何写一本技术书/
+│   └── how-to-write-a-tech-book/
 │       ├── 01_立项卡.json … 08_读者假设.md
 │       ├── units/            # 12 个冻结写作单元（spec + 正文）
 │       └── handoff/          # S7 交接包六文件
@@ -80,14 +81,17 @@ tech-author-playbook/
 | 你要做的事 | 进入 | 必读 | 不要先读 |
 | --- | --- | --- | --- |
 | 第一次接手本仓库 | 本文件 | §1–§5 | 子模块源码 |
+| **维护/修改本仓库** | 根目录 `AGENTS.md` | 全文（收尾检查表） | 先别改代码 |
 | **看一本已按规范写完的金样板** | `books/how-to-write-a-tech-book/` | `handoff/00_README.md` + `PROBLEMS.md` | 排版引擎 |
-| 为一本新书立项、定读者、定大纲 | `writing-rules/` | `kit/stage_prompts.md` S0–S2 + 主规范 §1–§3 | 排版引擎 |
+| **新建标准写作工程（闭眼脚手架）** | `writing-rules/` | `tools/init_book.py` + `CONTRIBUTING.md` 闭眼节 | 排版引擎 |
+| 为一本新书立项、定读者、定大纲 | `writing-rules/` | `kit/stage_prompts.md` S0–S2 + `spec/02-立项.md` | 排版引擎 |
 | 写一节 / 改一节正文 | `writing-rules/` | 主规范 §4 + 该节 spec + `kit/stage_prompts.md` | 全书正文、排版细节 |
 | 打磨语言、去 AI 腔 | `writing-rules/` | 主规范 §6 + 附录 H | 排版引擎 |
 | 跑校验、过门禁 | `writing-rules/` | `README.md` 命令表 + 主规范 §7 | — |
 | 把写作单元装成 Typst 章 | `techbook-typst/` | `tools/md2typ.py` + `AGENTS.md` | 写作规范长文 |
 | 装配章节、出 PDF、改版式 | `techbook-typst/` | **`techbook-typst/AGENTS.md`** | 写作规范长文 |
-| 建新的书稿项目 | `techbook-typst/` | `AGENTS.md` §3 | — |
+| 装配写作工程并编译 | `writing-rules/` | `tools/assemble_book.py`（见 CONTRIBUTING 闭眼节） | — |
+| 建 Typst 薄书稿/快照 | `techbook-typst/` | `AGENTS.md` §3 | — |
 | 加图/表/清单、交叉引用、附录 | `techbook-typst/` | `AGENTS.md` §5–§6 | — |
 | 改封面/页眉/编号/字体 | `techbook-typst/` | `AGENTS.md` §7、§10 + `DESIGN.md` | 章节正文 |
 | 排查编译失败 | `techbook-typst/` | `AGENTS.md` §11 速查 | — |
@@ -158,6 +162,7 @@ S0 立项 ──► S1 读者 ──► S2 大纲
 | 文件 | 角色 | 打开时机 |
 | --- | --- | --- |
 | `README.md`（本文件） | 项目地图 / 任务路由 | 任何会话开始 |
+| **`AGENTS.md`** | **仓库维护契约** | 改本库任何文件之前 |
 | `writing-rules/README.md` | 内容规范入口 | 做写作、校验任务 |
 | `writing-rules/技术书籍写作规范_v1.md` | 规范导航入口 | 不知从哪读时 |
 | `writing-rules/spec/` | 写作规范分片（真源） | 按任务分片读 |

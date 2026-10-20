@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢参与 **tech-author-playbook**。本仓库是「写技术书」的方法与工具：内容规范（`writing-rules/`）× 成书排版（`techbook-typst/`）。两条线职责不重叠，请先对准你改的那一条。
+感谢参与 **tech-author-playbook**。**Agent 修改本仓库请先读根目录 [`AGENTS.md`](AGENTS.md)（维护契约）**；本文侧重协作分工与 PR 约定。本仓库是「写技术书」的方法与工具：内容规范（`writing-rules/`）× 成书排版（`techbook-typst/`）。两条线职责不重叠，请先对准你改的那一条。
 
 ## 仓库地图（贡献时看这里）
 

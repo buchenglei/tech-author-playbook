@@ -45,7 +45,16 @@ writing-rules/
 
 **只想知道标准。** 读主文件第 0 部分（作者身份）与第 6 部分（语言与风格），再看附录 H 的六组对照。这是"写成什么样"的全部答案。
 
-**要开始写一本书。** 贴 `kit/stage_prompts.md` 的 S-1 人格段，然后按 S0 → S7 走。每阶段有门禁，不过不许进下一阶段。
+**要开始写一本书。** 先脚手架，再贴 `kit/stage_prompts.md` 的 S-1 人格段，按 S0 → S7 走：
+
+```bash
+python3 tools/init_book.py my-book --title "书名" --claim "可证伪承诺"
+python3 tools/spec_lint.py --gate G0 books/my-book
+# 写 units/ … 完成后
+python3 tools/assemble_book.py books/my-book --engine ../techbook-typst --compile
+```
+
+标准目录与闭眼约定见根目录 `CONTRIBUTING.md`。每阶段有门禁，不过不许进下一阶段。
 
 **已有书稿要体检。** 直接跑校验：
 

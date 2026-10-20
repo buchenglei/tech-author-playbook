@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- 根目录 `AGENTS.md`：仓库维护契约（变更闭环、现场清理、变更说明、收尾检查表）。
 - `writing-rules/tools/init_book.py`：按 kit 脚手架写作工程（文件名与 G0–G7 对齐）。
 - `writing-rules/tools/assemble_book.py`：units → `chapters/chN.typ` → config.toml 一条命令；无正文也出章占位。
 - `books/how-to-write-a-tech-book/`：按 writing-rules S0–S7 写成的金样板（12 冻结单元 + 交接包）。
@@ -17,6 +18,7 @@
 - `techbook-typst/tools/md2typ.py`：写作单元 Markdown → Typst 章节装配。
 
 ### Changed
+- README 路由补「新建标准写作工程 / 装配编译 / 维护本仓库」；S0 提示词要求先 `init_book.py`；金样板路径统一为 `how-to-write-a-tech-book/`。
 - 章节装配约定：`chapters/chN.typ`（由 assemble_book 生成）；handoff 统一 `01_outline.json`/`02_glossary.json`。
 - 台账/立项卡来源 URL 去掉写死的托管平台地址，改为 `https://…` 或 `repo:相对路径`；G0 接受 `repo:`。
 - 版权与包作者统一为 **CodeBu**。
