@@ -58,6 +58,7 @@ tech-author-playbook/
 │   ├── 技术书籍写作规范_v1.md  # 导航入口（正文在 spec/）
 │   ├── spec/                 # 规范分片 00–10 + 附录 A–H
 │   ├── 如何改规范.md          # 改规则/阈值/门禁指南
+│   ├── workflow/             # ★ 作者/读者/编辑 + 人 四阶段工作流
 │   ├── tools/                # spec_lint / init_book / assemble_book / sync_handoff / tests
 │   └── kit/                  # 立项卡、大纲、单元 spec、台账、术语、提示词…
 └── techbook-typst/           # 排版成书：Typst 基础库 + 样书 + 构建
@@ -80,6 +81,7 @@ tech-author-playbook/
 
 | 你要做的事 | 进入 | 必读 | 不要先读 |
 | --- | --- | --- | --- |
+| **用本库写一本书（外部 Agent）** | `writing-rules/workflow/WORKFLOW.md` | 全文 + `roles/` | 先别写正文 |
 | 第一次接手本仓库 | 本文件 | §1–§5 | 子模块源码 |
 | **维护/修改本仓库** | 根目录 `AGENTS.md` | 全文（收尾检查表） | 先别改代码 |
 | **看一本已按规范写完的金样板** | `books/how-to-write-a-tech-book/` | `handoff/00_README.md` + `PROBLEMS.md` | 排版引擎 |
@@ -162,6 +164,7 @@ S0 立项 ──► S1 读者 ──► S2 大纲
 | 文件 | 角色 | 打开时机 |
 | --- | --- | --- |
 | `README.md`（本文件） | 项目地图 / 任务路由 | 任何会话开始 |
+| `writing-rules/workflow/WORKFLOW.md` | **写书三角色工作流** | 外部 Agent 写书开工 |
 | **`AGENTS.md`** | **仓库维护契约** | 改本库任何文件之前 |
 | `writing-rules/README.md` | 内容规范入口 | 做写作、校验任务 |
 | `writing-rules/技术书籍写作规范_v1.md` | 规范导航入口 | 不知从哪读时 |

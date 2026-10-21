@@ -5,6 +5,8 @@
 ## [Unreleased]
 
 ### Added
+- `writing-rules/workflow/`：作者/读者/编辑 + 人 四阶段写书工作流、角色说明书、7+1 报告模板
+- `init_book.py` 创建 `workflow/`（阶段状态与报告模板）；README 路由置顶 WORKFLOW
 - 文风：ENG-09 带新人视角；UNIT-21/22、LANG-19/20 禁挂牌标题 + 每节表格 ≤2；lint L-FORM-01/02
 - style.kernel 收录「原始 vs 优化」文风对照；金样板 12 单元按新文风整本重写
 - 根目录 `AGENTS.md`：仓库维护契约（变更闭环、现场清理、变更说明、收尾检查表）。

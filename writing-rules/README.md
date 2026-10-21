@@ -20,6 +20,7 @@ writing-rules/
 ├── 技术书籍写作规范_v1.md      导航入口（正文真源在 spec/）
 ├── README.md                   本文件
 ├── 如何改规范.md               改规则/阈值/门禁的贡献指南
+├── workflow/                  # ★ 写书三角色 + 四阶段（外部 Agent 必读）
 ├── spec/                       规范分片（单一真源）
 │   ├── README.md               按任务加载
 │   ├── 00-overview.md … 10-交接.md

@@ -158,6 +158,7 @@ cd techbook-typst && nu build.nu doctor && nu build.nu lint && nu build.nu book
 - [ ] `run_tests.py` 全绿；必要时编译 PDF  
 - [ ] `git status` 无意外产物  
 - [ ] 说明写到「下一只 Agent 能直接用」（§3）
+- [ ] 若是「写书」而非「改仓库」：已走 `writing-rules/workflow/WORKFLOW.md` 并留阶段状态
 
 ---
 

@@ -159,10 +159,30 @@ def scaffold(slug: str, title: str, claim: str, dest_root: Path) -> Path:
     (book / "units" / ".gitkeep").write_text("", encoding="utf-8")
     (book / "handoff" / ".gitkeep").write_text("", encoding="utf-8")
 
+    # 写作工作流目录（三角色 / 四阶段）——见 writing-rules/workflow/WORKFLOW.md
+    wf_src = ROOT / "writing-rules" / "workflow" / "templates"
+    wf_dst = book / "workflow"
+    wf_dst.mkdir(exist_ok=True)
+    (wf_dst / "memory").mkdir(exist_ok=True)
+    (wf_dst / "archive").mkdir(exist_ok=True)
+    for name in ("00_阶段状态.json", "01_读者报告.md", "02_编辑审校.md",
+                 "03_作者改进方案.md", "04_写作宪法.md", "05_章节滚动评估.md",
+                 "06_终审报告包说明.md", "07_项目反哺报告.md"):
+        src = wf_src / name
+        if src.is_file():
+            shutil.copy2(src, wf_dst / name)
+    st_p = wf_dst / "00_阶段状态.json"
+    if st_p.is_file():
+        st = load_json(st_p)
+        st["book"] = title or slug
+        dump_json(st_p, st)
+
     readme = (
         f"# {title or slug}\n\n"
-        f"新建写作工程（init_book）。下一步：按 `writing-rules/kit/stage_prompts.md` S0→S7 推进；\n"
-        f"装配 PDF：`python3 writing-rules/tools/assemble_book.py {book}`\n"
+        f"新建写作工程（init_book）。\n\n"
+        f"**开工必读** `writing-rules/workflow/WORKFLOW.md`（作者/读者/编辑 + 人，四阶段）。\n"
+        f"门禁：`python3 writing-rules/tools/spec_lint.py --gate G0 {book}`\n"
+        f"装配：`python3 writing-rules/tools/assemble_book.py {book}`\n"
     )
     (book / "README.md").write_text(readme, encoding="utf-8")
     return book

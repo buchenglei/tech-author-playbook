@@ -1,0 +1,18 @@
+{
+  "_说明": "写书工作流阶段状态。人工/Agent 更新即可；非硬状态机。详见 writing-rules/workflow/WORKFLOW.md",
+  "book": "",
+  "phase": "P1",
+  "phase_note": "P1 样板章 | P2 滚动 | P3 全稿评审 | P4 定稿反哺",
+  "reader_persona": "10 年研发经验的资深后端工程师",
+  "reader_persona_confirmed_by_human": false,
+  "review_every_n_chapters": 3,
+  "chapters_done": [],
+  "pending_human": [],
+  "blockers": [],
+  "notes_brief": [],
+  "memory_policy": {
+    "keep": ["workflow/04_写作宪法.md", "workflow/00_阶段状态.json", "units/*frozen*", "handoff/*", "04_ledger.csv", "06_glossary.json"],
+    "archive": ["workflow/archive/", "废弃草稿", "过程闲聊"],
+    "never_delete": ["01_立项卡.json", "02_outline.json", "frozen units", "写作宪法", "三类报告"]
+  }
+}

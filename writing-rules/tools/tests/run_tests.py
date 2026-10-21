@@ -195,6 +195,9 @@ def main() -> int:
         b = td / "t-book"
         check("init_book 生成标准文件", r.returncode == 0 and (b / "02_outline.json").is_file()
               and (b / "units").is_dir() and (b / "handoff").is_dir(), r.stdout + r.stderr)
+        check("init_book 生成 workflow", (b / "workflow" / "00_阶段状态.json").is_file()
+              and (b / "workflow" / "04_写作宪法.md").is_file()
+              and (b / "workflow" / "01_读者报告.md").is_file(), r.stdout + r.stderr)
         code, out = gate("G0", b)
         check("init_book 后 G0 可过", code == 0, out)
         r = run([sys.executable, str(asm), str(b), "--engine", str(ROOT / "techbook-typst"),
