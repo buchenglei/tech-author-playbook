@@ -462,8 +462,8 @@ def check_table_density(text, profile="manuscript"):
         heads = " ".join(l for _, l, _, _ in lines if re.match(r"^#\s+", l.strip()))
         if any(x in heads for x in FORM_EXEMPT_SECTION):
             return out
-        out.append({"rule_id": "L-FORM-02", "level": "P0", "line": 0,
-                    "msg": f"本节表格 {n} 张（上限 2；附录/工具书豁免）"})
+        out.append({"rule_id": "L-FORM-02", "level": "P2", "line": 0,
+                    "msg": f"本节表格 {n} 张（建议 ≤2，自由区可偏离并登记；附录豁免）"})
     return out
 
 
@@ -873,7 +873,7 @@ def run_checks(text, path, profile, strict, with_registry=True, ref_text=""):
     p0 += check_humor(text)
     if profile == "manuscript":
         p0 += check_form_labels(text, profile)
-        p0 += check_table_density(text, profile)
+        p2 += check_table_density(text, profile)
     p1 += check_headings(text)
     p1 += check_sentence_len(text)
     p1 += check_paragraphs(text, profile)

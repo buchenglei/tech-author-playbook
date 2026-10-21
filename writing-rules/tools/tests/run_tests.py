@@ -82,7 +82,7 @@ def main() -> int:
         f5 = td / "tables.md"
         f5.write_text(f"# t\n\n## 小节\n\n{tables}\n", encoding="utf-8")
         data, _ = lint_json(f5)
-        check("L-FORM-02 表格上限", any(i.get("rule_id") == "L-FORM-02" for i in data.get("P0", [])), str(data)[:200])
+        check("L-FORM-02 表格提示(P2)", any(i.get("rule_id") == "L-FORM-02" for i in data.get("P2", [])), str(data)[:200])
 
         # 禁用词仍应拦截
         f3 = td / "bad.md"

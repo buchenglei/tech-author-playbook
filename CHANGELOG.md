@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- 自由区：ENG-10 / WORKFLOW §8 叙述与修辞可发挥，每章 1–2 处实验并登记；读者报告增加「是否被规则绑死」
 - `writing-rules/workflow/`：作者/读者/编辑 + 人 四阶段写书工作流、角色说明书、7+1 报告模板
 - `init_book.py` 创建 `workflow/`（阶段状态与报告模板）；README 路由置顶 WORKFLOW
 - 文风：ENG-09 带新人视角；UNIT-21/22、LANG-19/20 禁挂牌标题 + 每节表格 ≤2；lint L-FORM-01/02
@@ -22,6 +23,7 @@
 - `techbook-typst/tools/md2typ.py`：写作单元 Markdown → Typst 章节装配。
 
 ### Changed
+- 表格密度 UNIT-22/LANG-20 降为 SHOULD（L-FORM-02 → P2）；挂牌标题与假来源仍 P0
 - README 路由补「新建标准写作工程 / 装配编译 / 维护本仓库」；S0 提示词要求先 `init_book.py`；金样板路径统一为 `how-to-write-a-tech-book/`。
 - 章节装配约定：`chapters/chN.typ`（由 assemble_book 生成）；handoff 统一 `01_outline.json`/`02_glossary.json`。
 - 台账/立项卡来源 URL 去掉写死的托管平台地址，改为 `https://…` 或 `repo:相对路径`；G0 接受 `repo:`。
