@@ -71,6 +71,19 @@ def main() -> int:
         p0ids = [i.get("rule_id") for i in data.get("P0", [])]
         check("manuscript 不报 S-RULE-01", "S-RULE-01" not in p0ids, str(p0ids))
 
+        # L-FORM-01：禁止认知链挂牌标题
+        f4 = td / "label.md"
+        f4.write_text("# t\n\n## 现象：挂钩\n\n正文一句。\n", encoding="utf-8")
+        data, _ = lint_json(f4)
+        check("L-FORM-01 禁挂牌标题", any(i.get("rule_id") == "L-FORM-01" for i in data.get("P0", [])), str(data)[:200])
+
+        # L-FORM-02：每节表格上限
+        tables = "\n\n".join(f"| a | b |\n| 1 | 2 |\n" for _ in range(3))
+        f5 = td / "tables.md"
+        f5.write_text(f"# t\n\n## 小节\n\n{tables}\n", encoding="utf-8")
+        data, _ = lint_json(f5)
+        check("L-FORM-02 表格上限", any(i.get("rule_id") == "L-FORM-02" for i in data.get("P0", [])), str(data)[:200])
+
         # 禁用词仍应拦截
         f3 = td / "bad.md"
         f3.write_text("# t\n\n这很重要，务必注意。\n", encoding="utf-8")

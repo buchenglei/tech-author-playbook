@@ -5,6 +5,8 @@
 ## [Unreleased]
 
 ### Added
+- 文风：ENG-09 带新人视角；UNIT-21/22、LANG-19/20 禁挂牌标题 + 每节表格 ≤2；lint L-FORM-01/02
+- style.kernel 收录「原始 vs 优化」文风对照；金样板 12 单元按新文风整本重写
 - 根目录 `AGENTS.md`：仓库维护契约（变更闭环、现场清理、变更说明、收尾检查表）。
 - `writing-rules/tools/init_book.py`：按 kit 脚手架写作工程（文件名与 G0–G7 对齐）。
 - `writing-rules/tools/assemble_book.py`：units → `chapters/chN.typ` → config.toml 一条命令；无正文也出章占位。

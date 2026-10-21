@@ -60,7 +60,9 @@
 6. **handoff 不手改拷贝件**  
    改源文件后 `python3 writing-rules/tools/sync_handoff.py <book>`。
 
-7. **章节不写样式**  
+7. **正文不挂牌**：禁止「现象：/机制：/…」式小节标题；每节表格 ≤2；样章文风以 `07_style.kernel.md` 对照为准。
+
+8. **章节不写样式**  
    `chapters/*.typ` 禁止 `#set page/text/par`；样式在 `src/` 或 `config.toml`。
 
 ---

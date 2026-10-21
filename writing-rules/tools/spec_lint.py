@@ -421,6 +421,52 @@ def check_symmetry(text):
     return out
 
 
+# 手册腔：认知链挂牌标题（UNIT-21 / LANG-19）
+LABEL_HEAD_RE = re.compile(
+    r"^#{2,4}\s*(现象|机制|证据|代价|误区|收束|小结)\s*[:：]"
+)
+# 附录/规范自身豁免
+FORM_EXEMPT_SECTION = ("附录", "禁用词", "句法病灶", "文风样例", "规则总表", "速查", "模板索引",
+                       "门禁", "故障", "三族", "待校准", "术语表")
+
+
+def check_form_labels(text, profile="manuscript"):
+    """正文禁止「现象：…」式挂牌小节；附录/工具书豁免。"""
+    out = []
+    for no, line, in_code, section in split_lines(text):
+        if in_code:
+            continue
+        if any(x in (section or "") for x in FORM_EXEMPT_SECTION):
+            continue
+        if LABEL_HEAD_RE.match(line.strip()):
+            out.append({"rule_id": "L-FORM-01", "level": "P0", "line": no,
+                        "msg": "挂牌式小节标题（认知链应溶解在行文，不进标题）",
+                        "quote": line.strip()[:60]})
+    return out
+
+
+def check_table_density(text, profile="manuscript"):
+    """每节（一个正文文件）表格 ≤2 张（UNIT-22 / LANG-20）。附录/速查节豁免。"""
+    out = []
+    lines = split_lines(text)
+    n = 0
+    for i, (no, line, in_code, section) in enumerate(lines):
+        s = line.strip()
+        if in_code or not s.startswith("|"):
+            continue
+        prev_pipe = i > 0 and lines[i - 1][1].strip().startswith("|")
+        if not prev_pipe:
+            n += 1
+    # 全文件若落在附录/速查等豁免标题下则不报
+    if n > 2:
+        heads = " ".join(l for _, l, _, _ in lines if re.match(r"^#\s+", l.strip()))
+        if any(x in heads for x in FORM_EXEMPT_SECTION):
+            return out
+        out.append({"rule_id": "L-FORM-02", "level": "P0", "line": 0,
+                    "msg": f"本节表格 {n} 张（上限 2；附录/工具书豁免）"})
+    return out
+
+
 def check_claims(text):
     """manuscript 模式：三位以上数字须与 E-xxx 同段落（CLAIM-01）。"""
     out = []
@@ -825,6 +871,9 @@ def run_checks(text, path, profile, strict, with_registry=True, ref_text=""):
     p0 += check_xref(text, headings)
     p0 += check_forbidden(text)
     p0 += check_humor(text)
+    if profile == "manuscript":
+        p0 += check_form_labels(text, profile)
+        p0 += check_table_density(text, profile)
     p1 += check_headings(text)
     p1 += check_sentence_len(text)
     p1 += check_paragraphs(text, profile)
