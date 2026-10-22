@@ -48,7 +48,7 @@ def main() -> int:
     est_pages = written / cpp if cpp else 0
 
     missing = []
-    for n in ("01_读者报告.md", "02_编辑审校.md", "09_大纲规则冲突评估.md"):
+    for n in ("01_读者报告.md", "02_编辑审校.md", "09_大纲×规范融合评估.md"):
         p = book / "workflow" / n
         if not p.is_file():
             missing.append(n)

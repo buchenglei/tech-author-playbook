@@ -5,7 +5,7 @@
 ## [Unreleased]
 
 ### Added
-- 质量第一与大纲优先：WORKFLOW §0、UNIT-23/24、STR-12 改硬；`00_大纲合同.json`、`09_大纲规则冲突评估.md`、`validate_quality.py`（G8）、`progress_report.py`
+- 质量第一与「基线+大纲融合」：WORKFLOW §0、UNIT-23/24、STR-12 改硬；`00_大纲合同.json`、`09_大纲×规范融合评估.md（文件名 09_大纲规则冲突评估.md）`、`validate_quality.py`（G8）、`progress_report.py`
 - 正文严禁「最少 token」；冻结/交付查体量、空模板报告、state 与 frozen 一致
 - 交付 README 开源项目化：书籍简介/承诺/读者/目录 + LICENSE 打入 tar.gz
 - 交付物 tar.gz 规范（`templates/08_交付规范.md`）与 `package_book.py`：含 typst 源码/PDF/manuscript/handoff/workflow/README/MANIFEST，自动清理废弃项
@@ -30,6 +30,7 @@
 - `techbook-typst/tools/md2typ.py`：写作单元 Markdown → Typst 章节装配。
 
 ### Changed
+- 写作规则模型：**writing-rules MUST 为基线**，大纲要求作为项目特化层**融合**进宪法（09 改为融合评估：保留基线/大纲覆盖/合成新条/Waiver）
 - 表格密度 UNIT-22/LANG-20 降为 SHOULD（L-FORM-02 → P2）；挂牌标题与假来源仍 P0
 - README 路由补「新建标准写作工程 / 装配编译 / 维护本仓库」；S0 提示词要求先 `init_book.py`；金样板路径统一为 `how-to-write-a-tech-book/`。
 - 章节装配约定：`chapters/chN.typ`（由 assemble_book 生成）；handoff 统一 `01_outline.json`/`02_glossary.json`。

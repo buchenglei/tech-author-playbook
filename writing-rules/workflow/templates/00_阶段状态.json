@@ -4,6 +4,7 @@
   "phase": "P1",
   "outline_contract": "workflow/00_大纲合同.json",
   "rule_conflict_status": "pending",
+  "rule_fusion_status": "pending",
   "rule_conflict_decision": null,
   "quality_first": true,
   "body_min_token_allowed": false,

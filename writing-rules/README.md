@@ -34,6 +34,9 @@ writing-rules/
 │   ├── run_gates.py            紧凑 G0–G7
 │   ├── new_unit.py             单元 spec 预填
 │   ├── memory_maint.py         阶段记忆清理
+│   ├── validate_quality.py     G8 体量/报告/过程验收
+│   ├── package_book.py         tar.gz 交付打包
+│   └── progress_report.py      进度一页纸
 │   └── tests/run_tests.py      工具回归
 └── kit/                        9 份可填写资产
     ├── 01_立项卡.json

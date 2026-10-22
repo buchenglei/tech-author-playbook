@@ -1,7 +1,7 @@
 {
-  "_说明": "大纲合同：从用户写作大纲提炼的硬约束。与 writing-rules 冲突时 → 交人裁决（见 09_大纲规则冲突评估.md）。生成后勿手改成更松。",
+  "_说明": "大纲合同：从用户写作大纲提炼的硬约束。与 writing-rules 与规范不一致时 → 融合评估人确认（见 09_大纲×规范融合评估.md）。生成后勿手改成更松。",
   "outline_file": "",
-  "priority_rule": "用户写作大纲 > 本 playbook（冲突须人工裁决或 waiver）",
+  "priority_rule": "writing-rules MUST 为基线；大纲要求融合为项目特化层，经 09 融合评估人确认后写入宪法，形成该书统一规则",
 
   "pages": {
     "target_min": 230,

@@ -134,7 +134,7 @@ def main() -> int:
     for name, label in (
         ("01_读者报告.md", "读者报告"),
         ("02_编辑审校.md", "编辑审校"),
-        ("09_大纲规则冲突评估.md", "大纲规则冲突评估"),
+        ("09_大纲×规范融合评估.md", "大纲×规范融合评估"),
     ):
         p = wf / name
         if not p.is_file():
@@ -147,7 +147,7 @@ def main() -> int:
     st_path = wf / "00_阶段状态.json"
     stw = load_json(st_path) or {}
     if stw.get("rule_conflict_status") == "pending" and frozen > 3:
-        fail("大纲规则冲突评估未裁决（pending）却已大量冻结正文")
+        fail("大纲×规范融合评估未人确认（pending）却已大量冻结正文")
     if stw.get("body_min_token_allowed") is True:
         fail("body_min_token_allowed 被设为 true（违反质量第一）")
 
