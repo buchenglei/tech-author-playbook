@@ -230,6 +230,12 @@ def main() -> int:
               and any("manuscript/" in x for x in names)
               and any(x.endswith("book.pdf") for x in names),
               r.stdout + r.stderr + str(names[:8]))
+        with tf.open(out_tar, "r:gz") as tar:
+            rd = next(n for n in tar.getnames() if n.endswith("README.md"))
+            text = tar.extractfile(rd).read().decode("utf-8")
+        check("package_book 含 LICENSE", any(x.endswith("LICENSE") for x in names), str(names))
+        check("README 含书籍介绍", ("本书承诺" in text or "适合谁" in text)
+              and "从源码到产物" in text and "License" in text, text[:200])
         check("package_book 无 archive/日志", not any("archive/" in x or x.endswith(".log") for x in names),
               str(names))
         code, out = gate("G0", b)

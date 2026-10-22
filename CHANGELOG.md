@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- 交付 README 开源项目化：书籍简介/承诺/读者/目录 + LICENSE 打入 tar.gz
 - 交付物 tar.gz 规范（`templates/08_交付规范.md`）与 `package_book.py`：含 typst 源码/PDF/manuscript/handoff/workflow/README/MANIFEST，自动清理废弃项
 - techbook：页边距约 3/4、表后间隙、封面/目录/版权左对齐
 - techbook 书感版式：正文衬线/标题黑体、首行缩进 2em、对称版心、章首页留白、三线表、代码块通栏轻量、A4 预设；书眉改为章名+居中页码

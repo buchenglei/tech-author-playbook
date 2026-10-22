@@ -75,48 +75,91 @@ def copy_tree(src: Path, dest: Path, dry: bool) -> list[str]:
     return added
 
 
-def gen_readme(book_title: str, slug: str) -> str:
-    return f"""# 交付说明 · {book_title}
+def gen_readme(meta: dict, outline: dict, slug: str) -> str:
+    title = meta.get("title") or slug
+    claim = meta.get("claim") or ""
+    abstract = meta.get("abstract") or claim
+    subtitle = meta.get("subtitle") or ""
+    authors = meta.get("authors") or "CodeBu"
+    if isinstance(authors, list):
+        authors = " / ".join(str(x) for x in authors)
+    reader_before = meta.get("reader_before") or ""
+    reader_after = meta.get("reader_after") or []
+    if isinstance(reader_after, str):
+        reader_after = [reader_after]
+    chapters = []
+    for ch in (outline.get("chapters") or []):
+        chapters.append(f"- **{ch.get('id', '')} {ch.get('title', '')}** — {ch.get('purpose', '')}")
+    toc = "\n".join(chapters) or "（见 `manuscript/02_outline.json`）"
 
-本包为技术书交付物（tar.gz 解压后目录）。含**可编译 Typst 源码**、**PDF**、**写作工程**与**评审反馈**，便于人工继续修改。
+    about_more = ""
+    if meta.get("increment_note"):
+        about_more += "\n**增量**（" + str(meta.get("increment", "")) + "）：" + str(meta.get("increment_note")) + "\n"
+    if reader_before:
+        about_more += "\n**适合谁**：" + reader_before + "\n"
+    if reader_after:
+        about_more += "\n**读完你能**：\n" + "\n".join("- " + x for x in reader_after) + "\n"
 
-## 包内结构
+    promise = ""
+    if claim and claim != abstract:
+        promise = "\n## 本书承诺\n\n" + claim + "\n"
 
-| 路径 | 用途 |
-| --- | --- |
-| `book.pdf` | 当前成品，先读这个 |
-| `typst/` | 排版工程（改样式/章节最终形态） |
-| `manuscript/` | 写作工程（大纲、单元 spec/正文、台账、术表） |
-| `handoff/` | 交接包（结构、术语、断言、校验、未验证项） |
-| `workflow/` | 读者/编辑报告、改进方案、写作宪法 |
-| `MANIFEST.txt` | 文件清单与版本 |
+    sub_line = ("\n> " + subtitle + "\n") if subtitle else ""
 
-## 如何从源码编译 PDF
+    return (
+        "# " + title + "\n"
+        + sub_line + "\n"
+        + abstract + "\n"
+        + promise + about_more
+        + "\n## 目录\n\n" + toc + "\n"
+        + """
+## 快速开始
+
+- **先读书**：[`book.pdf`](book.pdf)（打包时编译产物）
+- **只改文字**：改 [`manuscript/units/`](manuscript/units/) 后同步章节源码
+- **改版式 / 重编 PDF**：
 
 ```bash
 cd typst
 typst compile --root . main.typ dist/book.pdf
 ```
 
-依赖：Typst 0.15+。字体见 `typst/FONTS.md`（缺字会告警并回退）。若含 `build.nu` 也可用 `nu build.nu book`。
+依赖 [Typst](https://typst.app) 0.15+。字体说明见 [`typst/FONTS.md`](typst/FONTS.md)。
 
-## 如何修改
+## 仓库结构
 
-1. **改内容**：`manuscript/units/*.md` 为内容真源；改后同步 `typst/chapters/chN.typ`（或用写作线 `assemble_book`，见仓库 tech-author-playbook）。
-2. **改版式**：`typst/src/` 与 `typst/config.toml`；章节内勿写 `#set page/text/par`。
-3. **改事实与来源**：`manuscript/04_ledger.csv` + 对应单元；推断句须带「推断/未实测」。
-4. **反馈**：填入 `workflow/` 下读者报告 / 编辑审校 / 写作宪法，勿只口头修改。
+| 路径 | 内容 |
+| --- | --- |
+| `book.pdf` | 成品 PDF |
+| `typst/` | 可编译 Typst 工程（章节、引擎、配置） |
+| `manuscript/` | 写作工程：立项、大纲、单元、台账、术语 |
+| `handoff/` | 交接包：结构、术语、断言账本、校验、未验证项 |
+| `workflow/` | 读者 / 编辑评审与写作宪法 |
+| `MANIFEST.txt` | 打包文件清单 |
+| `LICENSE` | 许可证（MIT） |
 
-## 真源约定
+## 从源码到产物
 
-- 内容：`manuscript/units/`
-- 成书排版：`typst/chapters/` 与 `typst/src/`
-- 交付状态与未验证：`handoff/05_unverified.md`（不得为空）
+1. 安装 Typst 0.15+
+2. `cd typst && typst compile --root . main.typ dist/book.pdf`
+3. 可选：改 `typst/config.toml`（书名、开本、字体），改 `typst/chapters/*.typ`（正文排版形态）
+4. 内容与事实以 `manuscript/` 为准；数字与出处见 `manuscript/04_ledger.csv`，未验证项见 `handoff/05_unverified.md`
 
-## 编译产物
+## 给贡献者 / 评审
 
-PDF 生成于 `typst/dist/book.pdf`；包内 `book.pdf` 为打包时快照，改稿后请重编并替换。
+- 反馈请落在 `workflow/`（读者报告、编辑审校、写作宪法修订）
+- 不要只交口头意见；改动尽量带位置（章节 / 原句）
+- 本书宣称的验证边界以 `handoff/05_unverified.md` 为准
+
+## License
+
+MIT © """ + authors + """。排版引擎与正文同仓库分发，保留本 `LICENSE` 即可再分发。
+
+---
+
+*本包由 tech-author-playbook 写书工作流生成（离线使用以包内文件为准）。*
 """
+    )
 
 
 def main() -> int:
@@ -136,13 +179,32 @@ def main() -> int:
         raise SystemExit(f"引擎目录不存在: {engine}")
 
     slug = book.name
-    title = slug
+    meta: dict = {"title": slug, "authors": "CodeBu"}
     card = book / "01_立项卡.json"
     if card.is_file():
         try:
-            title = json.loads(card.read_text(encoding="utf-8")).get("title") or slug
+            meta.update(json.loads(card.read_text(encoding="utf-8")))
         except Exception:
             pass
+    outline: dict = {}
+    op = book / "02_outline.json"
+    if op.is_file():
+        try:
+            outline = json.loads(op.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    # config 摘要可作书籍介绍补充
+    cfgp = engine / "config.toml"
+    if cfgp.is_file() and not meta.get("abstract"):
+        import re as _re
+        m = _re.search(r'abstract\s*=\s*"([^"]*)"', cfgp.read_text(encoding="utf-8"))
+        if m:
+            meta["abstract"] = m.group(1)
+        m2 = _re.search(r'subtitle\s*=\s*"([^"]*)"', cfgp.read_text(encoding="utf-8"))
+        if m2:
+            meta["subtitle"] = m2.group(1)
+    if meta.get("title") == slug and outline.get("book", {}).get("title"):
+        meta["title"] = outline["book"]["title"]
 
     pdf = Path(a.pdf).resolve() if a.pdf else (engine / "dist" / "book.pdf")
     out = Path(a.out).resolve() if a.out else (ROOT / "dist" / f"{slug}-delivery.tar.gz")
@@ -152,7 +214,10 @@ def main() -> int:
     def add_bytes(arc: str, data: bytes):
         files.append((arc, data))
 
-    add_bytes("README.md", gen_readme(title, slug).encode("utf-8"))
+    add_bytes("README.md", gen_readme(meta, outline, slug).encode("utf-8"))
+    lic = ROOT / "LICENSE"
+    if lic.is_file():
+        add_bytes("LICENSE", lic.read_bytes())
 
     # typst 工程
     n_typst = 0
@@ -201,7 +266,7 @@ def main() -> int:
 
     manifest = [
         f"package: {slug}-delivery",
-        f"title: {title}",
+        f"title: {meta.get('title', slug)}",
         f"date: {dt.datetime.now().isoformat(timespec='seconds')}",
         f"typst_files: {n_typst}",
         f"manuscript_files: {n_manu}",
