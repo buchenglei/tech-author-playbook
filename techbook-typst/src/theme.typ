@@ -2,13 +2,14 @@
 //  theme.typ —— 专业技术书籍版式引擎
 // -----------------------------------------------------------------------------
 //  唯一入口：#show: book.with(config: toml("config.toml"))
-//  B5 成书：书眉双面、书口页码、章首页、图表 N-M、印刷向目录。
+//  书感版式：正文衬线、首行缩进、章首页留白、轻书眉；图表 N-M。
 // =============================================================================
 
 #import "lib/tokens.typ": build-tokens, build-meta
 #import "lib/utils.typ": to-cn
 #import "component.typ": bind as component-bind, wrap-raw, appendix-state
 #import "cover.typ": cover-page, colophon-page
+#import "toc.typ": toc-page
 
 #let num-fmt = numbering
 
@@ -41,12 +42,13 @@
     toc-depth: layout.at("toc-depth", default: 2),
     header: layout.at("header", default: true),
     indent: {
-      let ind = layout.at("indent", default: "0em")
-      if type(ind) == str {
+      let ind = layout.at("indent", default: none)
+      if ind == none { t.rhythm.indent }
+      else if type(ind) == str {
         if ind == "0" or ind == "0pt" or ind == "0em" { 0pt }
         else if ind.ends-with("em") { float(ind.slice(0, -2)) * 1em }
         else if ind.ends-with("pt") { float(ind.slice(0, -2)) * 1pt }
-        else { 0pt }
+        else { t.rhythm.indent }
       } else { ind }
     },
     cover: layout.at("cover", default: true),
@@ -64,9 +66,9 @@
     } else { none },
   )
 
-  // ---- 全局排版 ------------------------------------------------------------
+  // ---- 全局排版：正文衬线，标题在 show 规则里用黑体 -----------------------
   set text(
-    font: t.fonts.sans,
+    font: t.fonts.serif,
     size: t.size.base,
     weight: 400,
     fill: t.ink,
@@ -83,7 +85,7 @@
     linebreaks: "optimized",
   )
 
-  // ---- 页面：B5 书版、双面书眉、书口页码 -----------------------------------
+  // ---- 页面：对称版心；书眉 = 章名，页码居中 --------------------------------
   set page(
     paper: t.geometry.paper,
     margin: t.geometry.margin,
@@ -103,32 +105,19 @@
             .filter(h => h.location().page() <= pg)
           let name = if hs.len() > 0 { hs.last().body } else { m.title }
           block(width: 100%)[
-            #if calc.even(pg) {
-              align(left, text(
-                font: t.fonts.sans, size: t.size.tiny, fill: t.ink-mute, tracking: 0.04em,
-              )[#m.title])
-            } else {
-              align(right, text(
-                font: t.fonts.sans, size: t.size.tiny, fill: t.ink-mute, tracking: 0.04em,
-              )[#name])
-            }
+            #align(center, text(
+              font: t.fonts.sans, size: t.size.tiny, fill: t.ink-mute,
+            )[#name])
             #v(t.space.xxxs)
-            #line(length: 100%, stroke: t.stroke.hair + t.rule)
+            #align(center, line(length: 22%, stroke: t.stroke.hair + t.rule))
           ]
         }
       }
     },
-    footer: context {
-      let pg = counter(page).display()
-      let mark = text(
+    footer: {
+      align(center, context text(
         font: t.fonts.sans, size: t.size.small, fill: t.ink-mute,
-      )[#pg]
-      // 书口侧页码：偶数页在左（外），奇数页在右（外）
-      if calc.even(here().page()) {
-        align(left, mark)
-      } else {
-        align(right, mark)
-      }
+      )[#counter(page).display()])
     },
   )
 
@@ -151,7 +140,9 @@
 
   // ---- 标题编号：章 1 / 节 1.1 / 小节 1.1.1 -------------------------------
   set heading(numbering: (..n) => num-fmt("1.1.1", ..n.pos()))
-  set figure(gap: t.space.xs)
+  set figure(gap: t.space.sm)
+  // 表/图与后文留小间隙（约半行，不空整行）
+  show figure: set block(below: t.space.md + 2pt)
   set footnote(numbering: "*")
   set list(
     indent: t.rhythm.list-indent,
@@ -212,7 +203,7 @@
     supplement: [式],
   )
 
-  // ---- 章首页 -------------------------------------------------------------
+  // ---- 章首页：更大留白，像翻到新一章 -------------------------------------
   show heading.where(level: 1): it => {
     // 按章重置图表/公式计数
     counter(figure.where(kind: "fig")).update(0)
@@ -222,18 +213,18 @@
     context {
       let numbered = it.numbering != none
       let n = counter(heading).get().first()
-      block(above: t.space.md, below: t.space.lg, width: 100%)[
+      block(above: t.space.lg * 1.6, below: t.space.xxl, width: 100%)[
         #set text(font: t.fonts.sans)
         #set par(first-line-indent: 0pt, justify: false)
         #if numbered [
-          #text(size: t.size.h1 - 5pt, weight: 700, fill: t.accent)[#chapter-label(n)]
-          #v(t.space.sm)
+          #text(size: t.size.h1 - 6pt, weight: 600, fill: t.accent)[#chapter-label(n)]
+          #v(t.space.md)
           #text(size: t.size.h1, weight: 700, fill: t.ink)[#it.body]
         ] else [
           #text(size: t.size.h1, weight: 700, fill: t.ink)[#it.body]
         ]
         #v(t.space.sm)
-        #line(length: 38%, stroke: t.stroke.thick + t.accent)
+        #line(length: 28%, stroke: t.stroke.thick + t.accent)
       ]
     }
   }
@@ -285,91 +276,7 @@
   }
 
   if ctx.toc {
-    context {
-      let entries = query(heading.where(level: 1, outlined: true))
-      if entries.len() > 0 {
-        page(header: none)[
-          #text(font: t.fonts.sans, size: t.size.h1 - 3pt, weight: 700, fill: t.ink)[目录]
-          #v(t.space.xs)
-          #line(length: 100%, stroke: t.stroke.thick + t.accent)
-          #v(t.space.md)
-          #set par(first-line-indent: 0pt, justify: false)
-          #{
-            let depth = ctx.toc-depth
-            show outline.entry.where(level: 1): it => {
-              let numbered = it.element.numbering != none
-              link(it.element.location())[
-                #set par(leading: 1.55em)
-                #grid(
-                  columns: (auto, 1fr, auto),
-                  column-gutter: 6pt,
-                  align: (left, bottom, right),
-                  text(font: t.fonts.sans, size: t.size.base, weight: 600, fill: t.ink)[
-                    #if numbered {
-                      context {
-                        let n = counter(heading).at(it.element.location()).first()
-                        chapter-label(n)
-                        h(0.6em)
-                        it.body()
-                      }
-                    } else {
-                      it.body()
-                    }
-                  ],
-                  box(width: 1fr, align(bottom)[#repeat(gap: 3.5pt)[.]]),
-                  text(font: t.fonts.sans, size: t.size.base - 0.5pt, fill: t.ink-mute)[#it.page()],
-                )
-              ]
-            }
-            show outline.entry.where(level: 2): it => {
-              link(it.element.location())[
-                #set par(leading: 1.45em)
-                #grid(
-                  columns: (1.2em, auto, 1fr, auto),
-                  column-gutter: 6pt,
-                  align: (left, left, bottom, right),
-                  [],
-                  text(font: t.fonts.sans, size: t.size.small, fill: t.ink-weak)[
-                    #context {
-                      if it.element.numbering != none {
-                        numbering("1.1", ..counter(heading).at(it.element.location()))
-                        h(0.35em)
-                      }
-                      it.body()
-                    }
-                  ],
-                  box(width: 1fr, align(bottom)[#repeat(gap: 3.5pt)[.]]),
-                  text(font: t.fonts.sans, size: t.size.small, fill: t.ink-mute)[#it.page()],
-                )
-              ]
-            }
-            show outline.entry.where(level: 3): it => if depth >= 3 {
-              link(it.element.location())[
-                #set par(leading: 1.4em)
-                #grid(
-                  columns: (2.4em, auto, 1fr, auto),
-                  column-gutter: 6pt,
-                  align: (left, left, bottom, right),
-                  [],
-                  text(font: t.fonts.sans, size: t.size.small, fill: t.ink-mute)[
-                    #context {
-                      if it.element.numbering != none {
-                        numbering("1.1.1", ..counter(heading).at(it.element.location()))
-                        h(0.35em)
-                      }
-                      it.body()
-                    }
-                  ],
-                  box(width: 1fr, align(bottom)[#repeat(gap: 3.5pt)[.]]),
-                  text(font: t.fonts.sans, size: t.size.small, fill: t.ink-mute)[#it.page()],
-                )
-              ]
-            } else { none }
-            outline(title: none, depth: depth, indent: 0pt, target: heading)
-          }
-        ]
-      }
-    }
+    toc-page(ctx)
   }
 
   doc

@@ -23,7 +23,9 @@ toc = true
 toc-depth = 2
 header = true
 chapter-pagebreak = true
-indent = "0em"
+# 首行缩进 2 字（书感）；写 "0em" 关闭
+indent = "2em"
+# 默认 jis-b5；可选 a4 / a5
 paper = "jis-b5"
 
 [color]
@@ -35,10 +37,13 @@ theme = "github"
 theme-path = "themes/github.tmTheme"
 show-lang = true
 show-lines = true
-width = "92%"
+# 与正文同宽，长代码少折行
+width = "100%"
 
 [fonts]
-sans = ["Microsoft YaHei", "PingFang SC", "Noto Sans SC"]
+# 正文衬线（书感）；标题由引擎用 sans
+serif = ["Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun"]
+sans = ["PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Heiti SC"]
 mono = ["Maple Mono NF", "Maple Mono", "Cascadia Code", "Consolas"]
 
 [[chapters]]

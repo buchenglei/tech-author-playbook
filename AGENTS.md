@@ -172,3 +172,4 @@ cd techbook-typst && nu build.nu doctor && nu build.nu lint && nu build.nu book
 | 改写作规范 | [`writing-rules/如何改规范.md`](writing-rules/如何改规范.md) |
 | 排版契约 | [`techbook-typst/AGENTS.md`](techbook-typst/AGENTS.md) |
 | 闭眼建书 | `writing-rules/tools/init_book.py` / `assemble_book.py` |
+| 紧凑门禁 / 清记忆 | `writing-rules/tools/run_gates.py` / `memory_maint.py` |

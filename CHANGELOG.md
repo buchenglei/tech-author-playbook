@@ -5,6 +5,9 @@
 ## [Unreleased]
 
 ### Added
+- techbook：页边距约 3/4、表后间隙、封面/目录/版权左对齐
+- techbook 书感版式：正文衬线/标题黑体、首行缩进 2em、对称版心、章首页留白、三线表、代码块通栏轻量、A4 预设；书眉改为章名+居中页码
+- 提速/省 Token：`workflow/briefs/` 加载卡、`run_gates.py` 紧凑门禁、`new_unit.py` spec 预填、`memory_maint.py`；阶段 2 每章 3 行卡 + 每 N 章详评 + 并行 N+1
 - 自由区：ENG-10 / WORKFLOW §8 叙述与修辞可发挥，每章 1–2 处实验并登记；读者报告增加「是否被规则绑死」
 - `writing-rules/workflow/`：作者/读者/编辑 + 人 四阶段写书工作流、角色说明书、7+1 报告模板
 - `init_book.py` 创建 `workflow/`（阶段状态与报告模板）；README 路由置顶 WORKFLOW

@@ -28,7 +28,12 @@ writing-rules/
 ├── tools/
 │   ├── spec_lint.py            L0 校验器 + 门禁 + 规则总表生成
 │   ├── build_spec.py           分片拼接（调试/单页）
+│   ├── init_book.py            新书脚手架（含 workflow/）
+│   ├── assemble_book.py        units → chapters/chN.typ
 │   ├── sync_handoff.py         交接包同步与时间戳
+│   ├── run_gates.py            紧凑 G0–G7
+│   ├── new_unit.py             单元 spec 预填
+│   ├── memory_maint.py         阶段记忆清理
 │   └── tests/run_tests.py      工具回归
 └── kit/                        9 份可填写资产
     ├── 01_立项卡.json

@@ -2,7 +2,7 @@
 //  lib/tokens.typ —— 成书默认令牌 + TOML 合并
 // -----------------------------------------------------------------------------
 //  使用者只改 config.toml；本文件提供默认值与解析逻辑，勿在业务文档里改。
-//  定位：专业技术书籍（B5 开本、书眉、图注 N-M、印刷向组件）。
+//  定位：屏读友好的技术书（书感版式；印刷工艺非必须）。
 // =============================================================================
 
 // ---- 配色（成书唯一预设，可被 [color] 覆盖）--------------------------------
@@ -11,9 +11,9 @@
   accent: "#1e3a8a",
   accent-ink: "#1e3a8a",
   accent-soft: "#e8eef8",
-  accent-wash: "#f4f7fb",
-  ink: "#111827",
-  ink-weak: "#374151",
+  accent-wash: "#f4f8fc",
+  ink: "#1a1d21",
+  ink-weak: "#3c4349",
   ink-mute: "#6b7280",
   rule: "#d1d5db",
   rule-strong: "#9ca3af",
@@ -21,31 +21,41 @@
   surface-alt: "#eef1f5",
   paper: "#ffffff",
   code-fg: "#24292f",
+  code-bg: "#f6f8fa",
+  code-rule: "#e5e9ef",
+  code-gutter: "#8c959f",
 )
 
-// 提示块四型：印刷向纯文字标签，无图标
+// 提示块四型：书内旁注，轻底左标
 #let callout-kinds = (
-  tip: (label: "提示", bar: "#1e3a8a", bg: "#eef2ff", fg: "#1e3a8a"),
-  warning: (label: "注意", bar: "#b45309", bg: "#fffbeb", fg: "#92400e"),
-  pit: (label: "避坑", bar: "#b91c1c", bg: "#fef2f2", fg: "#991b1b"),
-  best: (label: "最佳实践", bar: "#047857", bg: "#ecfdf5", fg: "#065f46"),
+  tip: (label: "提示", bar: "#1e3a8a", bg: "#f5f7fc", fg: "#1e3a8a"),
+  warning: (label: "注意", bar: "#b45309", bg: "#fbf7ef", fg: "#92400e"),
+  pit: (label: "避坑", bar: "#b91c1c", bg: "#fbf3f3", fg: "#991b1b"),
+  best: (label: "要点", bar: "#047857", bg: "#f1faf6", fg: "#065f46"),
 )
 
-// ---- 几何 / 节奏（B5 成书）--------------------------------------------------
+// ---- 几何 / 节奏（书感；对称版心，便于屏读）--------------------------------
 
 #let geometry = (
   paper: "jis-b5",
-  margin: (inside: 24mm, outside: 20mm, top: 22mm, bottom: 24mm),
-  header-gap: 10mm,
-  footer-gap: 12mm,
+  // 对称版心；已按「无装订、页边距 ≈ 原稿 3/4」收紧
+  margin: (inside: 16mm, outside: 16mm, top: 18mm, bottom: 20mm),
+  header-gap: 7mm,
+  footer-gap: 10mm,
   binding: left,
+  // paper 预设覆盖
+  papers: (
+    "jis-b5": (paper: "jis-b5", margin: (inside: 16mm, outside: 16mm, top: 18mm, bottom: 20mm)),
+    "a4": (paper: "a4", margin: (inside: 18mm, outside: 18mm, top: 20mm, bottom: 22mm)),
+    "a5": (paper: "a5", margin: (inside: 13mm, outside: 13mm, top: 15mm, bottom: 16mm)),
+  ),
 )
 
 #let type-scale = (
   base: 10.5pt,
   small: 9pt,
   tiny: 8pt,
-  h1: 24pt,
+  h1: 26pt,
   h2: 15pt,
   h3: 12.5pt,
   h4: 11pt,
@@ -54,8 +64,9 @@
 )
 
 #let rhythm = (
-  leading: 0.82em,
-  par-spacing: 0.72em,
+  leading: 0.95em,
+  par-spacing: 0.82em,
+  indent: 2em,
   list-indent: 1.5em,
   list-body-indent: 0.55em,
 )
@@ -84,7 +95,8 @@
 // ---- 字体默认 ---------------------------------------------------------------
 
 #let default-fonts = (
-  sans: ("Microsoft YaHei", "PingFang SC", "Noto Sans SC"),
+  serif: ("Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun"),
+  sans: ("PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Heiti SC"),
   mono: ("Maple Mono NF", "Maple Mono", "Cascadia Code", "Consolas"),
 )
 
@@ -159,14 +171,28 @@
   let code-theme-name = code-cfg.at("theme", default: "github")
   let code-theme-path = code-cfg.at("theme-path", default: "themes/" + code-theme-name + ".tmTheme")
 
-  let paper = geom-cfg.at("paper", default: geometry.paper)
+  let paper-name = geom-cfg.at("paper", default: geometry.paper)
+  let papers = geometry.papers
+  let paper-preset = papers.at(paper-name, default: none)
+  let user-margin = geom-cfg.at("margin", default: none)
+  let base-margin = if paper-preset != none { paper-preset.margin } else { geometry.margin }
+  let margin = base-margin
+  if type(user-margin) == dictionary {
+    margin = (:)
+    for (k, v) in base-margin { margin.insert(k, parse-length(user-margin.at(k, default: v), fallback: v)) }
+  }
 
   (
     code-theme: code-theme-path,
     code-show-lang: code-cfg.at("show-lang", default: true),
     code-show-lines: code-cfg.at("show-lines", default: true),
     code-inline-wrap: code-cfg.at("inline-wrap", default: true),
-    code-width: parse-length(code-cfg.at("width", default: "92%"), fallback: 92%),
+    // 默认与正文同宽，避免长代码无谓折行
+    code-width: parse-length(code-cfg.at("width", default: "100%"), fallback: 100%),
+    code-inset-x: parse-length(code-cfg.at("inset-x", default: "0.85em"), fallback: 0.85em),
+    code-bg: as-color(code-cfg.at("bg", default: book-colors.code-bg)),
+    code-rule: as-color(code-cfg.at("rule", default: book-colors.code-rule)),
+    code-gutter: as-color(code-cfg.at("gutter", default: book-colors.code-gutter)),
     accent: accent,
     accent-ink: accent-ink,
     accent-soft: accent-soft,
@@ -197,6 +223,7 @@
       merged
     },
     fonts: (
+      serif: fonts.at("serif", default: default-fonts.serif),
       sans: fonts.at("sans", default: default-fonts.sans),
       mono: fonts.at("mono", default: default-fonts.mono),
     ),
@@ -207,15 +234,17 @@
     rhythm: (
       leading: parse-length(type-cfg.at("leading", default: none), fallback: rhythm.leading),
       par-spacing: parse-length(type-cfg.at("par-spacing", default: none), fallback: rhythm.par-spacing),
+      indent: parse-length(type-cfg.at("indent", default: none), fallback: rhythm.indent),
       list-indent: rhythm.list-indent,
       list-body-indent: rhythm.list-body-indent,
     ),
     geometry: (
-      paper: paper,
-      margin: geometry.margin,
-      header-gap: geometry.header-gap,
-      footer-gap: geometry.footer-gap,
-      binding: geometry.binding,
+      paper: paper-name,
+      margin: margin,
+      header-gap: parse-length(geom-cfg.at("header-gap", default: none), fallback: geometry.header-gap),
+      footer-gap: parse-length(geom-cfg.at("footer-gap", default: none), fallback: geometry.footer-gap),
+      binding: geom-cfg.at("binding", default: geometry.binding),
+      header-style: geom-cfg.at("header-style", default: "chapter-page"),
     ),
   )
 }

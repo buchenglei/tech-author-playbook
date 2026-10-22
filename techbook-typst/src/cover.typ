@@ -57,17 +57,19 @@
             line(length: 100%, stroke: 0.5pt + rgb("#3b82f6").transparentize(20%))
           },
 
-          // ---- 中段：书名 ----
+          // ---- 中段：书名（左对齐，与顶栏/底栏同一条左边线）----
           {
-            align(horizon)[
-              #move(dy: -6mm)[
-                #block(width: 92%)[
-                  #set par(leading: 1.15em, justify: false)
+            align(left + horizon)[
+              #move(dy: -4mm)[
+                #block(width: 100%)[
+                  #set par(leading: 1.12em, justify: false, first-line-indent: 0pt)
                   #text(font: t.fonts.sans, size: title-size, weight: 700, fill: white)[#m.title]
                   #if m.subtitle != none [
-                    #v(6mm)
-                    #set par(leading: 1.4em)
-                    #text(font: t.fonts.sans, size: t.size.cover-subtitle, fill: rgb("#dbeafe"))[—— #m.subtitle ——]
+                    #v(5mm)
+                    #line(length: 32mm, stroke: 1.2pt + rgb("#93c5fd"))
+                    #v(3.5mm)
+                    #set par(leading: 1.35em)
+                    #text(font: t.fonts.sans, size: t.size.cover-subtitle, fill: rgb("#dbeafe"))[#m.subtitle]
                   ]
                 ]
               ]
@@ -96,7 +98,7 @@
   ]
 }
 
-/// 版权页
+/// 版权页（精简：书名/作者/版本/日期 + 简介；版本记录压成一行）
 #let colophon-page(ctx) = {
   let t = ctx.tokens
   let m = ctx.meta
@@ -106,49 +108,31 @@
     [#m.title]
   }
   page(header: none)[
-    #text(font: t.fonts.sans, size: t.size.h2, weight: 700)[版权信息]
+    #set par(first-line-indent: 0pt, justify: false)
+    #text(font: t.fonts.sans, size: t.size.h3, weight: 700)[版权信息]
     #v(t.space.xs)
     #line(length: 100%, stroke: t.stroke.thin + t.rule-strong)
     #v(t.space.md)
     #if m.abstract != none [
-      #text(font: t.fonts.sans, size: t.size.small, weight: 700, fill: t.ink-weak)[内容简介]
-      #v(t.space.xs)
-      #block(inset: (right: 6mm), par(leading: 1.55em)[
-        #text(size: t.size.base, fill: t.ink-weak)[#m.abstract]
+      #block(inset: (right: 4mm), par(leading: 1.5em, justify: true, first-line-indent: 0pt)[
+        #text(size: t.size.small, fill: t.ink-weak)[#m.abstract]
       ])
       #v(t.space.lg)
     ]
     #set text(size: t.size.small)
     #grid(
-      columns: (22mm, 1fr),
+      columns: (18mm, 1fr),
       row-gutter: t.space.xs,
       text(fill: t.ink-mute)[书名], title-line,
       text(fill: t.ink-mute)[作者], text[#author-text(m)],
-      ..if m.team != none { (text(fill: t.ink-mute)[团队], text[#m.team]) } else { () },
-      ..if m.org != none { (text(fill: t.ink-mute)[组织], text[#m.org]) } else { () },
       text(fill: t.ink-mute)[版本], text[#if m.version != none [#m.version]],
       text(fill: t.ink-mute)[日期], text[#if m.date != none [#m.date.cn]],
-      ..if m.keywords.len() > 0 {
-        (text(fill: t.ink-mute)[关键词], text[#m.keywords.join(" · ")])
-      } else { () },
     )
     #if m.history.len() > 0 [
-      #v(t.space.xl)
-      #text(font: t.fonts.sans, size: t.size.h3, weight: 700, fill: t.ink)[版本记录]
-      #v(t.space.xs)
-      #table(
-        columns: (16mm, 24mm, 1fr, 20mm),
-        inset: (x: t.space.xs, y: t.space.xxs),
-        stroke: 0.4pt + t.rule,
-        fill: (_, y) => if y == 0 { t.surface-alt } else { t.paper },
-        text(weight: 700)[版本], text(weight: 700)[日期], text(weight: 700)[说明], text(weight: 700)[作者],
-        ..m.history.map(h => (
-          text(weight: 600)[#h.version],
-          text(fill: t.ink-weak)[#h.date],
-          text(fill: t.ink-weak)[#h.note],
-          text(fill: t.ink-mute)[#if h.author != none { h.author }],
-        )).flatten(),
-      )
+      #v(t.space.lg)
+      #text(fill: t.ink-mute, size: t.size.tiny)[
+        版本记录：#m.history.map(h => [#h.version（#h.date）#h.note]).join("；")
+      ]
     ]
   ]
 }

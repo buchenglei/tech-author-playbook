@@ -69,7 +69,7 @@ my-book/
 
 = 章标题          # 不要写「第一章」
 
-#tip[提示] #warning[注意] #pit[避坑] #best[最佳实践]
+#tip[提示] #warning[注意] #pit[避坑] #best[要点]
 #keypoint[要点]
 #tbl(columns: 2, header: ("A","B"), ("1","2"), caption: [表题])
 #listing("code", lang: "python", title: [清单])

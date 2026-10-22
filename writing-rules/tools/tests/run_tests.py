@@ -198,6 +198,22 @@ def main() -> int:
         check("init_book 生成 workflow", (b / "workflow" / "00_阶段状态.json").is_file()
               and (b / "workflow" / "04_写作宪法.md").is_file()
               and (b / "workflow" / "01_读者报告.md").is_file(), r.stdout + r.stderr)
+        # new_unit 预填
+        nu = ROOT / "writing-rules" / "tools" / "new_unit.py"
+        r = run([sys.executable, str(nu), str(b), "C01-S1"])
+        spec = b / "units" / "C01-S1.spec.md"
+        check("new_unit 预填 spec", r.returncode == 0 and spec.is_file()
+              and "C01-S1" in spec.read_text(encoding="utf-8"), r.stdout + r.stderr)
+        # run_gates 紧凑
+        rg = ROOT / "writing-rules" / "tools" / "run_gates.py"
+        r = run([sys.executable, str(rg), str(b), "--skip", "G3,G4,G5,G6,G7"])
+        check("run_gates 可跑", r.returncode == 0 and "G0 PASS" in r.stdout, r.stdout + r.stderr)
+        # memory_maint
+        mm = ROOT / "writing-rules" / "tools" / "memory_maint.py"
+        (b / "workflow" / "draft-old.md").write_text("x", encoding="utf-8")
+        r = run([sys.executable, str(mm), str(b)])
+        check("memory_maint 归档草稿", r.returncode == 0 and not (b / "workflow" / "draft-old.md").exists(),
+              r.stdout + r.stderr)
         code, out = gate("G0", b)
         check("init_book 后 G0 可过", code == 0, out)
         r = run([sys.executable, str(asm), str(b), "--engine", str(ROOT / "techbook-typst"),

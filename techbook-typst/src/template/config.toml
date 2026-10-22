@@ -21,7 +21,7 @@ toc = true
 toc-depth = 2
 header = true
 chapter-pagebreak = true
-indent = "0em"
+indent = "2em"
 paper = "jis-b5"
 
 [color]
@@ -33,6 +33,7 @@ theme-path = "themes/github.tmTheme"
 show-lang = true
 
 [fonts]
+serif = ["Songti SC", "Noto Serif CJK SC", "SimSun"]
 sans = ["Microsoft YaHei", "PingFang SC", "Noto Sans SC"]
 mono = ["Maple Mono NF", "Maple Mono", "Cascadia Code", "Consolas"]
 

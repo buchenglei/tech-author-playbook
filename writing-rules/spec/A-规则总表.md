@@ -2,8 +2,6 @@
 
 <!-- REGISTRY:BEGIN -->
 
-# 附录 A 规则总表（由正文派生，勿手改）
-
 共 **135** 条：MUST 93 / SHOULD 42 / MAY 0。
 
 本表由 `python3 tools/spec_lint.py spec/ --registry --write` 从正文生成。**修改规则只需改正文，不要改这里**——手改会在下一次生成时被覆盖，且脚本会报不一致。

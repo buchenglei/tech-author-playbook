@@ -152,7 +152,7 @@ toc = true
 toc-depth = 2                   # 目录到 N 级标题
 header = true                   # 书眉
 chapter-pagebreak = true        # 章前分页
-indent = "0em"                  # 首行缩进
+indent = "2em"                  # 首行缩进（书感；写 "0em" 关闭）
 paper = "jis-b5"                # 或 "iso-b5" / "a4" 等 Typst 纸张名
 
 [color]
@@ -164,10 +164,11 @@ theme = "github"
 theme-path = "themes/github.tmTheme"
 show-lang = true
 show-lines = true
-width = "92%"
+width = "100%"                   # 与正文同宽
 
 [fonts]
-sans = ["Microsoft YaHei", "PingFang SC", "Noto Sans SC"]
+serif = ["Songti SC", "Noto Serif CJK SC", "SimSun"]
+sans = ["PingFang SC", "Microsoft YaHei", "Noto Sans SC"]
 mono = ["Maple Mono NF", "Maple Mono", "Cascadia Code", "Consolas"]
 
 [[chapters]]
@@ -236,7 +237,7 @@ path = "chapters/ch1-intro.typ"
 | `#tip[body]` | 提示 |
 | `#warning[body]` | 注意 |
 | `#pit[body]` | 避坑 |
-| `#best[body]` | 最佳实践 |
+| `#best[body]` | 要点 |
 | `#keypoint(title: "要点")[body]` | 要点框 |
 | `#lead[body]` | 段落小标题（不进目录） |
 | `#quote(attribution: "出处", title: "小标题")[body]` | 引用/摘录 |

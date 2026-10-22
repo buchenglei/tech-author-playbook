@@ -39,44 +39,41 @@
   let nlines = rows.len()
   let show-lines = lines and nlines > 1
   let code-size = t.size.small + 0.1pt
-  let gutter-w = str(nlines).len() * 0.62em + 1.0em
-  let bg = rgb("#f6f8fa")
-  let gutter-fg = rgb("#8c959f")
+  let gutter-w = str(nlines).len() * 0.62em + 0.9em
+  let bg = t.code-bg
+  let gutter-fg = t.code-gutter
   let show-lang = t.code-show-lang and lang-str != "text"
+  let inset-x = t.code-inset-x
 
-  align(center)[
-    #block(width: t.code-width, above: t.space.lg, below: t.space.lg, breakable: true)[
-      #block(width: 100%, fill: bg, radius: t.radius.md, clip: true)[
-        #block(
-          width: 100%,
-          inset: (left: t.space.md, right: t.space.md, top: t.space.md + 2pt, bottom: t.space.md),
-        )[
-          #if show-lang [
-            #place(top + right, dx: 2pt, dy: -2pt,
-              text(font: t.fonts.sans, size: t.size.tiny, fill: rgb("#8c959f"), tracking: 0.06em)[#lang-str])
-          ]
-          #align(left)[
-            #set par(leading: 0.72em, spacing: 0em, justify: false, first-line-indent: 0pt)
-            #if file != none [
-              #text(font: t.fonts.sans, size: t.size.tiny, fill: rgb("#57606a"))[#file]
-              #v(t.space.xs)
-            ]
-            // 逐行渲染：不创建 block 级 raw，避免 show raw 递归 / 双重行号
-            #for (i, ln) in rows.enumerate() {
-              if show-lines {
-                box(width: gutter-w)[
-                  #set text(font: mono-font, size: code-size, fill: gutter-fg)
-                  #align(right, str(i + 1))
-                ]
-                h(t.space.xs)
-              }
-              raw(ln, lang: lang-str, block: false)
-              if i < nlines - 1 { linebreak() }
-            }
-          ]
+  // 与正文同宽；轻量：浅底 + 上下细线，去掉厚重外框
+  block(width: t.code-width, above: t.space.md, below: t.space.md, breakable: true)[
+    #line(length: 100%, stroke: t.stroke.hair + t.code-rule)
+    #block(width: 100%, fill: bg, inset: (left: inset-x, right: inset-x, top: t.space.sm, bottom: t.space.sm))[
+      #if show-lang [
+        #place(top + right,
+          text(font: t.fonts.sans, size: t.size.tiny, fill: t.code-gutter, tracking: 0.04em)[#lang-str])
+      ]
+      #align(left)[
+        #set par(leading: 0.78em, spacing: 0em, justify: false, first-line-indent: 0pt)
+        #if file != none [
+          #text(font: t.fonts.sans, size: t.size.tiny, fill: t.ink-mute)[#file]
+          #v(t.space.xs)
         ]
+        // 逐行渲染：不创建 block 级 raw，避免 show raw 递归 / 双重行号
+        #for (i, ln) in rows.enumerate() {
+          if show-lines {
+            box(width: gutter-w)[
+              #set text(font: mono-font, size: code-size, fill: gutter-fg)
+              #align(right, str(i + 1))
+            ]
+            h(t.space.xs)
+          }
+          raw(ln, lang: lang-str, block: false)
+          if i < nlines - 1 { linebreak() }
+        }
       ]
     ]
+    #line(length: 100%, stroke: t.stroke.hair + t.code-rule)
   ]
 }
 
@@ -329,12 +326,16 @@
     let t = get-tokens()
     let header-cells = header.map(h => text(font: t.fonts.sans, size: t.size.small, weight: 700, fill: t.ink)[#h])
     let body-cells = rows.pos().map(r => r.map(c => text(font: t.fonts.sans, size: t.size.small, fill: t.ink)[#c]))
+    let n = 1 + body-cells.len()
+    // 三线表：顶线、表头下线、底线，更像书
     table(
       columns: columns,
       align: align,
-      inset: (x: t.space.sm, y: t.space.xs),
-      stroke: 0.4pt + t.rule,
-      fill: (_, y) => if y == 0 { t.surface-alt } else { t.paper },
+      inset: (x: t.space.sm, y: t.space.xs + 1pt),
+      stroke: none,
+      table.hline(y: 0, stroke: t.stroke.rule + t.ink-weak),
+      table.hline(y: 1, stroke: t.stroke.hair + t.rule-strong),
+      table.hline(y: n, stroke: t.stroke.rule + t.ink-weak),
       ..header-cells,
       ..body-cells.flatten(),
     )

@@ -505,8 +505,6 @@ def render_registry(rules, path):
     may = sum(1 for r in rows if r["strength"] == "MAY")
 
     lines = [
-        "# 附录 A 规则总表（由正文派生，勿手改）",
-        "",
         f"共 **{len(rows)}** 条：MUST {must} / SHOULD {should} / MAY {may}。",
         "",
         f"本表由 `python3 tools/spec_lint.py spec/ --registry --write` 从正文生成。"

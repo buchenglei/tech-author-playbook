@@ -20,7 +20,7 @@
 #tip[提示]
 #warning[注意]
 #pit[避坑]
-#best[最佳实践]
+#best[要点]
 
 #keypoint[要点]
 #lead[段落引导]
