@@ -1,0 +1,49 @@
+{
+  "_说明": "大纲合同：从用户写作大纲提炼的硬约束。与 writing-rules 冲突时 → 交人裁决（见 09_大纲规则冲突评估.md）。生成后勿手改成更松。",
+  "outline_file": "",
+  "priority_rule": "用户写作大纲 > 本 playbook（冲突须人工裁决或 waiver）",
+
+  "pages": {
+    "target_min": 230,
+    "target_max": 250,
+    "chars_per_page": 450,
+    "derived_chars_min": 103500,
+    "derived_chars_max": 112500,
+    "note": "页数来自大纲；换算仅作门禁下限参考"
+  },
+
+  "book": {
+    "target_words_min": 100000,
+    "target_words_max": 130000,
+    "structure_min_chapters": 20
+  },
+
+  "section": {
+    "words_min_ratio": 0.6,
+    "words_absolute_min": 1200,
+    "note": "冻结前实写字数 ≥ max(0.6*预算, 绝对下限)；禁止以省 token 为由写梗概"
+  },
+
+  "chapter_blocks_required": [
+    "目标",
+    "痛点开场",
+    "正文",
+    "标尺",
+    "落地_命令与预期输出",
+    "避坑",
+    "小结_官方锚点"
+  ],
+  "chapter_blocks_exempt": ["附录"],
+
+  "quality": {
+    "forbid_min_token_on_body": true,
+    "forbid_outline_as_body": true,
+    "prefer_depth_over_breadth": true
+  },
+
+  "process": {
+    "phase1_must_human": true,
+    "phase1_rule_conflict_report": true,
+    "review_every_n_chapters": 3
+  }
+}

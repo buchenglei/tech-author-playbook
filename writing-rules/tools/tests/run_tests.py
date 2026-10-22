@@ -195,6 +195,7 @@ def main() -> int:
         b = td / "t-book"
         check("init_book 生成标准文件", r.returncode == 0 and (b / "02_outline.json").is_file()
               and (b / "units").is_dir() and (b / "handoff").is_dir(), r.stdout + r.stderr)
+        check("init_book 生成大纲合同", (b / "workflow" / "00_大纲合同.json").is_file(), "")
         check("init_book 生成 workflow", (b / "workflow" / "00_阶段状态.json").is_file()
               and (b / "workflow" / "04_写作宪法.md").is_file()
               and (b / "workflow" / "01_读者报告.md").is_file(), r.stdout + r.stderr)
@@ -206,7 +207,7 @@ def main() -> int:
               and "C01-S1" in spec.read_text(encoding="utf-8"), r.stdout + r.stderr)
         # run_gates 紧凑
         rg = ROOT / "writing-rules" / "tools" / "run_gates.py"
-        r = run([sys.executable, str(rg), str(b), "--skip", "G3,G4,G5,G6,G7"])
+        r = run([sys.executable, str(rg), str(b), "--skip", "G3,G4,G5,G6,G7,G8"])
         check("run_gates 可跑", r.returncode == 0 and "G0 PASS" in r.stdout, r.stdout + r.stderr)
         # memory_maint
         mm = ROOT / "writing-rules" / "tools" / "memory_maint.py"
@@ -218,7 +219,8 @@ def main() -> int:
         pkg = ROOT / "writing-rules" / "tools" / "package_book.py"
         out_tar = td / "pack.tar.gz"
         r = run([sys.executable, str(pkg), str(b), "--engine", str(ROOT / "techbook-typst"),
-                 "--out", str(out_tar), "--pdf", str(ROOT / "techbook-typst" / "dist" / "book.pdf")])
+                 "--out", str(out_tar), "--skip-quality",
+                 "--pdf", str(ROOT / "techbook-typst" / "dist" / "book.pdf")])
         import tarfile as tf
         names = []
         if out_tar.is_file():
@@ -246,6 +248,13 @@ def main() -> int:
               and (b / "chapters" / "preface.typ").is_file(), r.stdout + r.stderr)
         check("assemble 不乱写引擎 config", (b / "chapters" / "chapters.manifest").is_file()
               or "跳过 config" in r.stdout, r.stdout)
+
+    print("== validate_quality ==")
+    vq = ROOT / "writing-rules" / "tools" / "validate_quality.py"
+    # 金样板无大纲合同页数时应提示；有 units 应报告体量问题（样板单节较短）
+    r = run([sys.executable, str(vq), str(BOOK)])
+    # 金样板可能因体量/合同 FAIL，这是预期；至少脚本可跑
+    check("validate_quality 可运行", r.returncode in (0, 1, 2) and "QUALITY" in r.stdout, r.stdout[:300])
 
     print("== 金样板 smoke ==")
     if BOOK.is_dir():

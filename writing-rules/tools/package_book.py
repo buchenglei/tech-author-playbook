@@ -23,6 +23,9 @@ import datetime as dt
 import io
 import json
 import os
+import re
+import subprocess
+import sys
 import tarfile
 import zipfile
 from pathlib import Path
@@ -169,6 +172,8 @@ def main() -> int:
     ap.add_argument("--out", default="", help="输出 tar.gz 路径")
     ap.add_argument("--pdf", default="", help="PDF 路径（默认 engine/dist/book.pdf）")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--skip-quality", action="store_true",
+                    help="跳过 validate_quality（交付说明须标 draft）")
     a = ap.parse_args()
 
     book = Path(a.book_dir).resolve()
@@ -283,6 +288,15 @@ def main() -> int:
         for name, _ in files:
             print(" ", name)
         return 0
+
+    # 交付前质量验收（内容第一：体量、报告非空、过程一致）
+    vq = ROOT / "writing-rules" / "tools" / "validate_quality.py"
+    if vq.is_file() and not a.skip_quality:
+        r = subprocess.run([sys.executable, str(vq), str(book)], capture_output=True, text=True)
+        print(r.stdout)
+        if r.returncode == 2:
+            print("交付被质量门禁拦截：请补体量/报告/过程状态，或显式 --skip-quality（须在交付说明声明 draft）")
+            return 2
 
     out.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(out, "w:gz") as tar:

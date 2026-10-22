@@ -16,6 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 LINT = ROOT / "writing-rules" / "tools" / "spec_lint.py"
+QUALITY = ROOT / "writing-rules" / "tools" / "validate_quality.py"
 
 
 def run_gate(which: str, base: Path) -> dict:
@@ -47,6 +48,22 @@ def main() -> int:
             results.append({"gate": g, "ok": True, "skipped": True})
             continue
         res = run_gate(g, book)
+        results.append(res)
+        if not res.get("ok"):
+            worst = 2
+    # G8 质量/体量/流程真实性
+    if "G8" not in skip:
+        r = subprocess.run(
+            [sys.executable, str(QUALITY), str(book), "--json"],
+            capture_output=True, text=True,
+        )
+        try:
+            q = json.loads(r.stdout)
+        except Exception:
+            q = {"P0": [{"msg": (r.stdout + r.stderr)[:200]}], "P1": []}
+        p0, p1 = q.get("P0") or [], q.get("P1") or []
+        res = {"gate": "G8", "ok": not p0, "P0": len(p0), "P1": len(p1),
+               "issues": (p0 + p1)[:6]}
         results.append(res)
         if not res.get("ok"):
             worst = 2

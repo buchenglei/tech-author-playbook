@@ -165,9 +165,10 @@ def scaffold(slug: str, title: str, claim: str, dest_root: Path) -> Path:
     wf_dst.mkdir(exist_ok=True)
     (wf_dst / "memory").mkdir(exist_ok=True)
     (wf_dst / "archive").mkdir(exist_ok=True)
-    for name in ("00_阶段状态.json", "01_读者报告.md", "02_编辑审校.md",
+    for name in ("00_阶段状态.json", "00_大纲合同.json", "01_读者报告.md", "02_编辑审校.md",
                  "03_作者改进方案.md", "04_写作宪法.md", "05_章节滚动评估.md",
-                 "06_终审报告包说明.md", "07_项目反哺报告.md"):
+                 "06_终审报告包说明.md", "07_项目反哺报告.md", "08_交付规范.md",
+                 "09_大纲规则冲突评估.md"):
         src = wf_src / name
         if src.is_file():
             shutil.copy2(src, wf_dst / name)

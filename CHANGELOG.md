@@ -5,6 +5,8 @@
 ## [Unreleased]
 
 ### Added
+- 质量第一与大纲优先：WORKFLOW §0、UNIT-23/24、STR-12 改硬；`00_大纲合同.json`、`09_大纲规则冲突评估.md`、`validate_quality.py`（G8）、`progress_report.py`
+- 正文严禁「最少 token」；冻结/交付查体量、空模板报告、state 与 frozen 一致
 - 交付 README 开源项目化：书籍简介/承诺/读者/目录 + LICENSE 打入 tar.gz
 - 交付物 tar.gz 规范（`templates/08_交付规范.md`）与 `package_book.py`：含 typst 源码/PDF/manuscript/handoff/workflow/README/MANIFEST，自动清理废弃项
 - techbook：页边距约 3/4、表后间隙、封面/目录/版权左对齐

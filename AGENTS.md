@@ -173,3 +173,4 @@ cd techbook-typst && nu build.nu doctor && nu build.nu lint && nu build.nu book
 | 排版契约 | [`techbook-typst/AGENTS.md`](techbook-typst/AGENTS.md) |
 | 闭眼建书 | `writing-rules/tools/init_book.py` / `assemble_book.py` |
 | 紧凑门禁 / 清记忆 | `writing-rules/tools/run_gates.py` / `memory_maint.py` |
+| 质量体量验收 | `writing-rules/tools/validate_quality.py` |
