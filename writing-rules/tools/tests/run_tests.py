@@ -71,6 +71,26 @@ def main() -> int:
         p0ids = [i.get("rule_id") for i in data.get("P0", [])]
         check("manuscript 不报 S-RULE-01", "S-RULE-01" not in p0ids, str(p0ids))
 
+        # 绕过口收紧：段内有 E- 但句子内无 E- 的数字仍要报（不再整段免检）
+        f6 = td / "bypass.md"
+        f6.write_text(
+            "# t\n\n"
+            "本段有锚 E-001 说明某事。\n\n"
+            "另一句给出 3000 ms 延迟与 99.99% 可用性，这句自己没有台账。\n",
+            encoding="utf-8")
+        data, _ = lint_json(f6)
+        check("check_claims 逐句核对（E- 不免整段）",
+              any(i.get("rule_id") == "L-CLAIM-01" for i in data.get("P0", [])),
+              str(data)[:300])
+
+        # 同句有 E- 则放行
+        f7 = td / "okclaim.md"
+        f7.write_text("# t\n\n延迟 3000 ms（E-001）已实测。\n", encoding="utf-8")
+        data, _ = lint_json(f7)
+        check("check_claims 同句 E- 放行",
+              not any(i.get("rule_id") == "L-CLAIM-01" for i in data.get("P0", [])),
+              str(data)[:200])
+
         # L-FORM-01：禁止认知链挂牌标题
         f4 = td / "label.md"
         f4.write_text("# t\n\n## 现象：挂钩\n\n正文一句。\n", encoding="utf-8")
@@ -205,10 +225,11 @@ def main() -> int:
         spec = b / "units" / "C01-S1.spec.md"
         check("new_unit 预填 spec", r.returncode == 0 and spec.is_file()
               and "C01-S1" in spec.read_text(encoding="utf-8"), r.stdout + r.stderr)
-        # run_gates 紧凑
+        # run_gates 紧凑：脚手架含占位时 G0 必须红（不得假绿）
         rg = ROOT / "writing-rules" / "tools" / "run_gates.py"
         r = run([sys.executable, str(rg), str(b), "--skip", "G3,G4,G5,G6,G7,G8"])
-        check("run_gates 可跑", r.returncode == 0 and "G0 PASS" in r.stdout, r.stdout + r.stderr)
+        check("run_gates 可跑且占位 G0 红", "G0 FAIL" in r.stdout and r.returncode != 0,
+              r.stdout + r.stderr)
         # memory_maint
         mm = ROOT / "writing-rules" / "tools" / "memory_maint.py"
         (b / "workflow" / "draft-old.md").write_text("x", encoding="utf-8")
@@ -240,8 +261,26 @@ def main() -> int:
               and "从源码到产物" in text and "License" in text, text[:200])
         check("package_book 无 archive/日志", not any("archive/" in x or x.endswith(".log") for x in names),
               str(names))
+        # 清掉占位后 G0 才允许过（负例在上，正例在下）
+        card_p = b / "01_立项卡.json"
+        card = json.loads(card_p.read_text(encoding="utf-8"))
+        card["claim"] = "在规模 S2 的服务仓库里，未锁依赖树会导致同 commit 构建产物漂移"
+        card["increment_note"] = "对照五道版本锁给出可指认症状与体检命令"
+        card["reader_before"] = "能独立维护一个 .NET 服务仓库"
+        card["sources"] = [
+            {"title": "MSBuild 求值顺序", "type": "E1", "url": "https://learn.microsoft.com/msbuild",
+             "version": "2026-10", "locator": "property-functions"},
+            {"title": "NuGet 锁文件", "type": "E1",
+             "url": "https://learn.microsoft.com/nuget/consume-packages/package-references-in-project-files",
+             "version": "2026-10", "locator": "lock-file"},
+            {"title": "本机实测", "type": "E1", "url": "repo:writing-rules/spec/05-写作单元.md",
+             "version": "1.0", "locator": "§4.7"},
+        ]
+        card["risk"] = [{"item": "SDK 版本号易过期", "review_by": "2027-01"}]
+        card["kill_criteria"] = ["连续两章无新判断", "读者测试表明目标不可达"]
+        card_p.write_text(json.dumps(card, ensure_ascii=False, indent=2), encoding="utf-8")
         code, out = gate("G0", b)
-        check("init_book 后 G0 可过", code == 0, out)
+        check("填充真实来源后 G0 可过", code == 0, out)
         r = run([sys.executable, str(asm), str(b), "--engine", str(ROOT / "techbook-typst"),
                  "--out", str(b / "chapters")])
         check("assemble 出 chapters", r.returncode == 0 and (b / "chapters" / "ch1.typ").is_file()
@@ -249,12 +288,70 @@ def main() -> int:
         check("assemble 不乱写引擎 config", (b / "chapters" / "chapters.manifest").is_file()
               or "跳过 config" in r.stdout, r.stdout)
 
+    print("== 门禁假绿与真源巡检 ==")
+    # G4 未实现必须红，不得 PASS
+    code, out = gate("G4", BOOK)
+    check("G4 未实现不得假绿", code != 0 and "未实现的门禁" in out, out[:200])
+    r = run([sys.executable, str(ROOT / "writing-rules" / "tools" / "run_gates.py"),
+             str(BOOK), "--skip", "G0,G1,G2,G3,G5,G6,G7,G8"])
+    check("run_gates 对 G4 报 FAIL", "G4 FAIL" in r.stdout or "G4 SKIP" in r.stdout,
+          r.stdout[:300])
+
+    # check_rule_coverage：声称脚本必须有实现
+    cov = ROOT / "writing-rules" / "tools" / "check_rule_coverage.py"
+    r = run([sys.executable, str(cov)])
+    check("check_rule_coverage 可跑", "COVERAGE_" in r.stdout, r.stdout[:300])
+    check("check_rule_coverage 无 P0 悬空脚本", "COVERAGE_PASS" in r.stdout,
+          r.stdout[:500])
+
     print("== validate_quality ==")
     vq = ROOT / "writing-rules" / "tools" / "validate_quality.py"
     # 金样板无大纲合同页数时应提示；有 units 应报告体量问题（样板单节较短）
     r = run([sys.executable, str(vq), str(BOOK)])
     # 金样板可能因体量/合同 FAIL，这是预期；至少脚本可跑
     check("validate_quality 可运行", r.returncode in (0, 1, 2) and "QUALITY" in r.stdout, r.stdout[:300])
+
+    # 文件名契约：01_读者报告-第1章.md 也算命中（WORKFLOW §7）
+    with tempfile.TemporaryDirectory() as td2:
+        b2 = Path(td2) / "book"
+        (b2 / "units").mkdir(parents=True)
+        (b2 / "workflow").mkdir()
+        (b2 / "02_outline.json").write_text(json.dumps({
+            "book": {"title": "t", "type": "实战书", "family": "B", "claim": "c",
+                     "target_words": 50000},
+            "chapters": [{"id": "C01", "title": "t", "purpose": "p",
+                          "role": {"phenomenon": "C01-S1", "mechanism": "C01-S1", "cost": "C01-S1"},
+                          "sections": [{"id": "C01-S1", "title": "t", "question": "q",
+                                        "produces": "p", "deps": [], "status": "drafting",
+                                        "words": 2000, "bridge": "b"}]}],
+            "paths": [], "concepts": [],
+        }, ensure_ascii=False), encoding="utf-8")
+        (b2 / "05_state.json").write_text("{}", encoding="utf-8")
+        (b2 / "units" / "C01-S1.md").write_text("# t\n\n" + "字" * 2000, encoding="utf-8")
+        (b2 / "workflow" / "00_大纲合同.json").write_text(json.dumps({
+            "book": {"target_words_min": 40000, "target_words_max": 60000},
+            "section": {"words_absolute_min": 100, "words_min_ratio": 0.5},
+        }), encoding="utf-8")
+        (b2 / "workflow" / "01_读者报告-第1章.md").write_text(
+            "# 读者报告\n\n日期 | 2026-10-22\n\n具体意见三条。\n", encoding="utf-8")
+        (b2 / "workflow" / "02_编辑审校-第1章.md").write_text(
+            "# 编辑审校\n\n日期 | 2026-10-22\n\n结论：通过。\n", encoding="utf-8")
+        (b2 / "workflow" / "09_大纲×规范融合评估.md").write_text(
+            "# 融合\n\n日期 | 2026-10-22\n\n裁决 C-01。\n", encoding="utf-8")
+        r = run([sys.executable, str(vq), str(b2)])
+        check("validate_quality 认 01_读者报告-第1章.md",
+              "缺 workflow/01_读者报告" not in r.stdout, r.stdout[:300])
+
+        # P0-F：人工确认不得「默示」
+        (b2 / "workflow" / "00_阶段状态.json").write_text(json.dumps({
+            "phase": "P3",
+            "rule_conflict_status": "confirmed",
+            "rule_conflict_decision": "用户委托 Agent 全程推进，视为默示确认",
+            "reader_persona_confirmed_by_human": False,
+            "pending_human": ["L2 终验"],
+        }, ensure_ascii=False), encoding="utf-8")
+        r = run([sys.executable, str(vq), str(b2)])
+        check("默示确认被拒", "默示" in r.stdout, r.stdout[:300])
 
     print("== 金样板 smoke ==")
     if BOOK.is_dir():

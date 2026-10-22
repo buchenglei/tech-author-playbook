@@ -24,6 +24,9 @@ import sys
 from collections import OrderedDict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from wordcount import chinese_len, cjk_len  # noqa: E402  统一字数口径
+
 # ---------------------------------------------------------------- 规则数据
 
 DOMAIN_ORDER = ["RULE", "ENG", "TOP", "AUD", "STR", "UNIT", "DEM",
@@ -78,10 +81,6 @@ CODE_RE = re.compile(r"^\s*```")
 def read(path):
     with open(path, encoding="utf-8") as f:
         return f.read()
-
-
-def chinese_len(s):
-    return len(re.sub(r"\s", "", s))
 
 
 def split_lines(text):
@@ -392,6 +391,39 @@ def check_code_fences(text):
     return out
 
 
+SPEC_FIELDS = ("id", "question", "bridge", "layer", "produces", "claims",
+               "evidence", "concepts_introduced", "concepts_used", "code", "word_budget")
+
+
+def check_unit_files(path):
+    """UNIT-01 / UNIT-02 / UNIT-14：spec 先于正文、十一项、代码块溯源标注。"""
+    out = []
+    p = Path(path)
+    if not p.is_file() or p.suffix != ".md" or p.name.endswith(".spec.md"):
+        return out
+    # 只对 units/Cxx-Sxx.md 形态生效
+    if not re.match(r"^[A-Za-z]{1,4}\d{0,3}-S\d+", p.stem):
+        return out
+    spec_p = p.with_name(p.stem + ".spec.md")
+    if not spec_p.is_file():
+        out.append({"rule_id": "S-UNIT-01", "level": "P0", "line": 0,
+                    "msg": f"缺 {spec_p.name}（UNIT-01：spec 必须先于正文）"})
+    else:
+        stext = spec_p.read_text(encoding="utf-8", errors="ignore")
+        missing = [f for f in SPEC_FIELDS if f not in stext]
+        if missing:
+            out.append({"rule_id": "S-SPEC-01", "level": "P0", "line": 0,
+                        "msg": f"{spec_p.name} 缺十一项字段：{','.join(missing)}"})
+    # UNIT-14：代码块须 src:/path: 或同节 E-xxx 台账锚
+    text = p.read_text(encoding="utf-8", errors="ignore")
+    fences = list(re.finditer(r"^```(\w+)", text, re.M))
+    if fences and "src:" not in text and "path:" not in text and not re.search(r"E-\d{3}", text) \
+            and "无代码" not in text:
+        out.append({"rule_id": "S-CODE-01", "level": "P1", "line": 0,
+                    "msg": "含代码块但无 src:/path: 与 E-xxx 溯源（UNIT-14）"})
+    return out
+
+
 def check_symmetry(text):
     """连续小节字数高度雷同 → 结构对称填充（UNIT-09）。"""
     out, blocks = [], []
@@ -467,17 +499,34 @@ def check_table_density(text, profile="manuscript"):
     return out
 
 
-def check_claims(text):
-    """manuscript 模式：三位以上数字须与 E-xxx 同段落（CLAIM-01）。"""
+NUM_UNIT_RE = re.compile(r"(?<![\d.])(\d{3,}|\d+\.\d+)\s*(ms|s|GB|MB|%|万|次|条)")
+EID_RE = re.compile(r"E-\d{3}")
+
+
+def check_claims(text, ledger_ids=None):
+    """manuscript：带单位的数字必须与 E-xxx 同句（CLAIM-01）。
+    不再「段内见 E- 即整段免检」；若提供 ledger_ids 则要求 E-xxx 真实存在。
+    """
     out = []
     for start, buf, _sec in paragraphs(split_lines(text)):
         body = "".join(buf)
-        if "E-" in body or "```" in body:
+        if "```" in body and not NUM_UNIT_RE.search(body):
             continue
-        for m in re.finditer(r"(?<![\d.])(\d{3,}|\d+\.\d+)\s*(ms|s|GB|MB|%|万|次|条)", body):
-            out.append({"rule_id": "L-CLAIM-01", "level": "P0", "line": start,
-                        "msg": f"数字「{m.group(0)}」未关联台账 E-xxx"})
-            break
+        # 按句扫描，而不是整段跳过
+        for sent in re.split(r"(?<=[。！？；\n])", body):
+            nums = list(NUM_UNIT_RE.finditer(sent))
+            if not nums:
+                continue
+            eids = EID_RE.findall(sent)
+            if not eids:
+                out.append({"rule_id": "L-CLAIM-01", "level": "P0", "line": start,
+                            "msg": f"数字「{nums[0].group(0)}」未关联台账 E-xxx"})
+                continue
+            if ledger_ids is not None:
+                known = [e for e in eids if e in ledger_ids]
+                if not known:
+                    out.append({"rule_id": "L-CLAIM-01", "level": "P0", "line": start,
+                                "msg": f"数字「{nums[0].group(0)}」引用的 {eids[0]} 不在台账中"})
     return out
 
 
@@ -618,6 +667,20 @@ def gate(which, base):
         if len(e1) < 3:
             issues.append({"rule_id": "TOP-01", "level": "P0",
                            "msg": f"合格的 E1 来源 {len(e1)} 条（需 ≥3，且 url 与 locator 非空）"})
+        # 占位假来源不得过 G0（根 AGENTS 禁止「占位过检后当真数据发布」）
+        PLACEHOLDER = ("待改写", "待定", "TODO", "占位", "请改写", "示例假设")
+        for s in d.get("sources", []):
+            blob = " ".join(str(s.get(k, "")) for k in ("title", "url", "locator"))
+            if any(p in blob for p in PLACEHOLDER):
+                issues.append({"rule_id": "TOP-01", "level": "P0",
+                               "msg": f"来源含占位文本，不得过 G0：{blob[:60]}"})
+                break
+        for k in ("claim", "increment_note", "reader_before"):
+            v = str(d.get(k, "") or "").strip()
+            if v == "待改写" or v.startswith("待改写：") or v.startswith("TODO"):
+                issues.append({"rule_id": "TOP-01", "level": "P0",
+                               "msg": f"立项卡 {k} 仍是占位文本"})
+                break
 
     elif which == "G1":
         p = None
@@ -830,7 +893,9 @@ def gate(which, base):
                            "msg": "05_unverified.md 内容过短（视为空洞声明）"})
 
     else:
-        issues.append({"rule_id": which, "level": "P1", "msg": f"未实现的门禁 {which}"})
+        # 未实现的门禁不得假绿（宁可红/跳过，也不要显示 PASS）
+        issues.append({"rule_id": which, "level": "P0",
+                       "msg": f"未实现的门禁 {which}（规范 §7.2 已定义，不得静默跳过）"})
     return issues
 
 
@@ -880,7 +945,10 @@ def run_checks(text, path, profile, strict, with_registry=True, ref_text=""):
     p2 += check_symmetry(text)
     p2 += check_cite(text)
     if profile == "manuscript":
-        p0 += check_claims(text)
+        p0 += check_claims(text, ledger_ids=None)
+        unit_iss = check_unit_files(path)
+        p0 += [i for i in unit_iss if i["level"] == "P0"]
+        p1 += [i for i in unit_iss if i["level"] != "P0"]
 
     if with_registry:
         table = render_registry(rules, path)

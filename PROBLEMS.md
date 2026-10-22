@@ -155,3 +155,22 @@
 | `writing-rules/tools/spec_lint.py` | check_claims 解包；G1 实现；G3/G5/G7 全量扫描；G2 bridge/role/target_words/paths；G6 handoff 回落；manuscript 跳过规则定义自洽 |
 | `books/how-to-write-a-tech-book/**` | 新建完整书稿工程 |
 | `techbook-typst/tools/md2typ.py` | 新增 Markdown→Typst 装配器 |
+
+---
+
+## P12. 外评暴露：规则声称脚本一半悬空，G4 假绿，G0 占位可过（P0，可信度）
+
+**现象**（两份外评 + C# 书稿交叉验证）：`A-规则总表` 标称「脚本 L-VOL-01」等 20+ 条在 `tools/*.py` 无实现；`--gate G4` 返回「未实现」却在 `run_gates` 显示 PASS；`init_book` 占位来源能过 G0；金样板 G8 红但 README 写「已跑通」。
+
+**根因**：迭代快于真源同步——门禁/工具改了，规范判定标注、README 信号、金样板定位没跟上；`run_gates` 只看 P0，未实现门禁被报成 P1 因而假绿。
+
+**修法**：
+1. 新增 `check_rule_coverage.py`（RULE-01 自动化）+ 测试；
+2. 未实现门禁改 P0，`run_gates` 诚实 FAIL；
+3. G0 拒「待改写/TODO」占位；`check_claims` 逐句核对；
+4. L-VOL-01 由 `validate_quality` 真实产出，其余悬空判定降为「自检」或改指真实 ID；
+5. README/handoff 明确金样板为「结构示范，体量未达 G8」。
+
+**验证**：`run_tests.py` 42 passed；`check_rule_coverage.py` COVERAGE_PASS；`run_gates` 对金样板 G4 FAIL、G8 FAIL（与 handoff 声明一致）。
+
+**教训**：**示范物与门禁矛盾时，Agent 跟随示范物。** 改门禁后的三问——金样板还过吗？README 提到了吗？判定标注还真实吗？——任一答不上就不算完成。

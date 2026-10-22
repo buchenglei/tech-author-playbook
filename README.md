@@ -2,7 +2,10 @@
 
 **技术书籍生产剧本**：写什么、怎么写成一本可读的书，以及如何排成 PDF。
 
-> **AI Agent：本文件是工作入口与路由地图。** 先读本文件定位任务，再进入对应子模块的作业说明；不要从子目录源码或长文规范开始读。
+> **先判断你是来做什么的：**
+> - **用本库写一本书** → 读本文件 §3 路由表 → `writing-rules/workflow/WORKFLOW.md`
+> - **维护 / 修改本仓库** → 根目录 [`AGENTS.md`](AGENTS.md)
+> - **只用排版引擎** → [`techbook-typst/AGENTS.md`](techbook-typst/AGENTS.md)
 >
 > **人类：** 两条能力线可单独取用。写作规范见 `writing-rules/`，Typst 成书见 `techbook-typst/`。
 
@@ -12,7 +15,7 @@
 
 **tech-author-playbook** is a method + toolchain for writing technical books:
 
-- `writing-rules/` — production rules (verifiable claims, outline schema, unit specs, E0–E3 evidence levels, gates G0–G7) and `spec_lint.py`
+- `writing-rules/` — production rules (verifiable claims, outline schema, unit specs, E0–E3 evidence levels, gates G0–G8) and `spec_lint.py` / `validate_quality.py`
 - `techbook-typst/` — Typst book engine (B5 layout, semantic components, `md2typ.py` assembly)
 - `books/how-to-write-a-tech-book/` — golden sample written through the full S0–S7 flow
 
@@ -84,7 +87,7 @@ tech-author-playbook/
 | **用本库写一本书（外部 Agent）** | `writing-rules/workflow/WORKFLOW.md` | 全文 + `roles/` | 先别写正文 |
 | 第一次接手本仓库 | 本文件 | §1–§5 | 子模块源码 |
 | **维护/修改本仓库** | 根目录 `AGENTS.md` | 全文（收尾检查表） | 先别改代码 |
-| **看一本已按规范写完的金样板** | `books/how-to-write-a-tech-book/` | `handoff/00_README.md` + `PROBLEMS.md` | 排版引擎 |
+| **看流程示范（结构骨架）** | `books/how-to-write-a-tech-book/` | `handoff/00_README.md` + `PROBLEMS.md` | 排版引擎；**注意体量未达 G8** |
 | **新建标准写作工程（闭眼脚手架）** | `writing-rules/` | `tools/init_book.py` + `CONTRIBUTING.md` 闭眼节 | 排版引擎 |
 | 为一本新书立项、定读者、定大纲 | `writing-rules/` | `kit/stage_prompts.md` S0–S2 + `spec/02-立项.md` | 排版引擎 |
 | 写一节 / 改一节正文 | `writing-rules/` | 主规范 §4 + 该节 spec + `kit/stage_prompts.md` | 全书正文、排版细节 |
@@ -123,7 +126,7 @@ S0 立项 ──► S1 读者 ──► S2 大纲
             交接 / 出版  ◄────  dist/book.pdf + 校验清单
 ```
 
-金样板已跑通：`books/how-to-write-a-tech-book/`（G0–G7 通过，状态 draft）→ `assemble_book.py` → `techbook-typst/chapters/chN.typ` → `dist/book.pdf`。
+流程示范书：`books/how-to-write-a-tech-book/`（**结构示范**，G0–G7 通过，**体量未达 G8 合同下限，不可当「写成这样就能交」的样例**）→ `assemble_book.py` → `techbook-typst/chapters/chN.typ` → `dist/book.pdf`。完整交付形态见 `writing-rules/workflow/templates/08_交付规范.md` 与 `docs/eval/` 中的真实书稿复盘。
 
 闭眼流水线：`init_book.py` 建工程 → 写 `units/` → `assemble_book.py --compile` 出 PDF。
 
@@ -154,7 +157,7 @@ S0 立项 ──► S1 读者 ──► S2 大纲
 - 不要把 `writing-rules/` 的规则抄进章节正文当内容。
 - 不要在 `techbook-typst/chapters/` 里改 `src/` 才能解决的样式问题。
 - 不要从随机源文件或长规范中段开始工作而不查 §3 路由表。
-- 不要跳过门禁用「我觉得可以了」代替判定（写作线 G0–G7）。
+- 不要跳过门禁用「我觉得可以了」代替判定（写作线 G0–G8）。
 - 不要默认把两个子模块交叉引用写进书稿正文（当前约定：各自独立演进，合并叙事等双方稳定后再做）。
 
 ---

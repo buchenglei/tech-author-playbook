@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 写作规则 / 门禁脚本 / kit 模板 | `writing-rules/` | `writing-rules/spec/` 与 `writing-rules/如何改规范.md` | `spec_lint` 自检 + 测试 |
 | Typst 引擎 / 版式 / 组件 | `techbook-typst/` | `techbook-typst/AGENTS.md` | `nu build.nu doctor && lint && book` |
-| 金样板书稿（方法演示） | `books/how-to-write-a-tech-book/` | `handoff/00_README.md` | G0–G7 |
+| 金样板书稿（方法演示） | `books/how-to-write-a-tech-book/` | `handoff/00_README.md` | G0–G8 |
 | Markdown → Typst 装配 | `techbook-typst/tools/md2typ.py` | `PROBLEMS.md` P7 | `writing-rules/tools/tests/` |
 | 开发者笔记 / 已知问题 | `PROBLEMS.md` | — | 保持「现象→根因→修法→验证」四段 |
 
@@ -17,7 +17,7 @@
 1. **不虚构来源**。台账里的 `url` 使用 `https://…` 或 `repo:相对路径`，不要写死任何托管平台地址。
 2. **不自证通过**。`已检查` 必须能指出：谁检、用什么命令、结果是什么。
 3. **门禁绿了再交**。
-   - 改写作线：`python3 writing-rules/tools/tests/run_tests.py`，并对金样板跑 G0–G7。
+   - 改写作线：`python3 writing-rules/tools/tests/run_tests.py`，并对金样板跑 G0–G8（G8 对结构示范书会红，见其 handoff 声明）。
    - 改排版线：`cd techbook-typst && nu build.nu doctor && nu build.nu lint && nu build.nu book`，并目视 `dist/book.pdf`。
 4. **产物不进库**。`dist/`、`*.pdf`、日志、`.DS_Store` 由 `.gitignore` 排除。
 5. **动引擎要回归**。改 `techbook-typst/src/` 后必须全量重编样书，不能只编正在改的章。
@@ -61,7 +61,7 @@ python3 writing-rules/tools/sync_handoff.py books/how-to-write-a-tech-book
 ## 闭眼产出标准结构（Agent 请走这条）
 
 ```bash
-# 1) 脚手架（目录名与 G0–G7 一致）
+# 1) 脚手架（目录名与 G0–G8 一致）
 python3 writing-rules/tools/init_book.py my-book --title "书名" --claim "可证伪承诺"
 
 # 2) 写作：按 kit/stage_prompts.md 填 01–08，units/Cxx-Sy.spec.md 先于 .md

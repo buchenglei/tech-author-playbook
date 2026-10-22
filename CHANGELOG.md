@@ -5,7 +5,27 @@
 ## [Unreleased]
 
 ### Added
-- 质量第一与「基线+大纲融合」：WORKFLOW §0、UNIT-23/24、STR-12 改硬；`00_大纲合同.json`、`09_大纲×规范融合评估.md（文件名 09_大纲规则冲突评估.md）`、`validate_quality.py`（G8）、`progress_report.py`
+- `tools/check_rule_coverage.py`：规则「声称脚本」与 tools 实现的真源一致性巡检（RULE-01 自动化）；`run_tests.py` 挂入
+- `tools/wordcount.py`：G3/G8/合同共用字数口径，spec_lint 与 validate_quality 统一 import
+- `CLAUDE.md` 与根 `AGENTS.md`/`README.md` 顶部三行入口判别器（写书 / 维护 / 只用排版）
+- 交付包布局支持：`validate_quality` 认 `manuscript/`+`workflow/`+`handoff/`；报告名兼容 `01_读者报告-第1章.md`
+- 人工确认不可默示：拒绝「视为默示确认」；人设未确认 / pending_human 未清记 P1
+
+### Fixed
+- **G4 未实现不得假绿**：报 P0「未实现的门禁」，`run_gates` 显示 FAIL 而非 PASS
+- **G0 拒占位**：立项卡来源/claim 含「待改写/TODO」时 G0 红
+- **check_claims 收紧**：不再「段内见 E- 即整段免检」，改为逐句核对
+- **L-VOL-01 落地**：`validate_quality` 以 `rule_id=L-VOL-01` 产出体量锁；其余悬空「脚本 X」降为「自检」或改指真实 ID
+- **09 报告名单一**为 `09_大纲×规范融合评估.md`，清除旧名
+- 金样板定位对齐：README/handoff 明确「结构示范、体量未达 G8」
+
+### Changed
+- UNIT-14 代码溯源接受 `src:`/`path:` **或** 同节台账 `E-xxx`（宪法 C-05）
+- 根 `AGENTS.md` §2 同步清单纳入 `validate_quality` / `check_rule_coverage`
+- `templates/08_交付规范.md` 写明双布局工具约定
+
+### Added（此前批次）
+- 质量第一与「基线+大纲融合」：WORKFLOW §0、UNIT-23/24、STR-12 改硬；`00_大纲合同.json`、`09_大纲×规范融合评估.md`、`validate_quality.py`（G8）、`progress_report.py`
 - 正文严禁「最少 token」；冻结/交付查体量、空模板报告、state 与 frozen 一致
 - 交付 README 开源项目化：书籍简介/承诺/读者/目录 + LICENSE 打入 tar.gz
 - 交付物 tar.gz 规范（`templates/08_交付规范.md`）与 `package_book.py`：含 typst 源码/PDF/manuscript/handoff/workflow/README/MANIFEST，自动清理废弃项
@@ -29,7 +49,7 @@
 - `CONTRIBUTING.md`、`CHANGELOG.md`、根 `.gitignore`、README English 入口。
 - `techbook-typst/tools/md2typ.py`：写作单元 Markdown → Typst 章节装配。
 
-### Changed
+### Changed（历史批次）
 - 写作规则模型：**writing-rules MUST 为基线**，大纲要求作为项目特化层**融合**进宪法（09 改为融合评估：保留基线/大纲覆盖/合成新条/Waiver）
 - 表格密度 UNIT-22/LANG-20 降为 SHOULD（L-FORM-02 → P2）；挂牌标题与假来源仍 P0
 - README 路由补「新建标准写作工程 / 装配编译 / 维护本仓库」；S0 提示词要求先 `init_book.py`；金样板路径统一为 `how-to-write-a-tech-book/`。
@@ -39,17 +59,17 @@
 - 金样板目录：`books/如何写一本技术书/` → `books/how-to-write-a-tech-book/`。
 - 根 `.gitignore`：图片改为只忽略 `dist/**/*.png`，避免挡住将来插图。
 
-### Fixed
+### Fixed（历史批次）
 - `spec_lint.check_claims` 段落元组解包崩溃（P1）。
 - G1 门禁未实现；G3/G5/G7 只扫第一个 `.md`。
 - manuscript 模式误报「引用了不存在的规则」。
 - G2 补 `bridge`/`status`/`role`/`target_words`/`paths` 检查。
 - G6 支持 `handoff/` 回落。
 
-### Removed
+### Removed（历史批次）
 - 样书中越权的排版工具章（改为附录速查）；过时章节名引用；`.DS_Store`。
 
 ## [0.0.1] - 2026-10-20
 
-### Added
+### Added（历史批次）
 - 初始仓库：writing-rules 规范与 kit、techbook-typst 引擎与样书骨架。

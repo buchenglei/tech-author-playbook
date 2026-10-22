@@ -1,5 +1,10 @@
 # AGENTS.md —— 本仓库维护契约（写给 Agent）
 
+> **先判断你是来做什么的：**
+> - **用本库写一本书** → 去读 [`README.md`](README.md) §3 路由表 → `writing-rules/workflow/WORKFLOW.md`，**不必读完本文件**
+> - **维护 / 修改本仓库** → 继续读本文件
+> - **只用排版引擎** → [`techbook-typst/AGENTS.md`](techbook-typst/AGENTS.md)
+
 你正在**维护** tech-author-playbook，不是用它写书。每次改代码、文档、样例前先读本文件；本文件是变更的硬约束，与 `CONTRIBUTING.md`（协作礼仪）并行，冲突时以更严者为准。
 
 > 用它写书请走 `README.md` 路由 + `writing-rules/kit/stage_prompts.md`。  
@@ -27,11 +32,11 @@
 
 | 线 | 目录 | 真源 | 回归 |
 | --- | --- | --- | --- |
-| 写作方法与门禁 | `writing-rules/` | `writing-rules/spec/*.md` | `tools/tests/run_tests.py` + 金样板 G0–G7 |
+| 写作方法与门禁 | `writing-rules/` | `writing-rules/spec/*.md` | `tools/tests/run_tests.py` + 金样板 G0–G8 |
 | 成书排版引擎 | `techbook-typst/` | `src/` | `nu build.nu doctor && lint && book` |
 | 金样板书稿 | `books/how-to-write-a-tech-book/` | `units/` + `02_outline.json` | 门禁 + `assemble_book.py` |
 
-交叉点只有工具：`tools/spec_lint.py`、`init_book.py`、`assemble_book.py`、`sync_handoff.py`、`md2typ.py`。改交叉点必须三线都回归。
+交叉点只有工具：`tools/spec_lint.py`、`init_book.py`、`assemble_book.py`、`sync_handoff.py`、`validate_quality.py`、`check_rule_coverage.py`、`md2typ.py`。改交叉点必须三线都回归。
 
 ---
 
@@ -41,7 +46,7 @@
    - 写作工程：`01_立项卡.json` … `08_读者假设.md`、`units/`、`handoff/`  
    - 交接包六文件：`00_README.md` `01_outline.json` `02_glossary.json` `03_ledger.csv` `04_check.json` `05_unverified.md`  
    - 装配章节：`chapters/chN.typ`（N 为章序）  
-   新增文件若进上述集合，必须同步 `spec_lint.GATE_FILES` / `init_book` / `sync_handoff` / `assemble_book` 与文档。
+   新增文件若进上述集合，必须同步 `spec_lint.GATE_FILES` / `init_book` / `sync_handoff` / `assemble_book` / `validate_quality` 与文档。
 
 2. **不写死托管平台 URL**  
    来源用 `https://…`（外部）或 `repo:相对路径`（本库）。禁止 `github.com/<org>/<repo>` 写进台账、立项卡、测试夹具。
@@ -115,9 +120,11 @@
 ```bash
 # 工具与金样板
 python3 writing-rules/tools/tests/run_tests.py
+python3 writing-rules/tools/check_rule_coverage.py
 
-# 写作门禁（金样板）
+# 写作门禁（金样板；G8 对结构示范书预期红）
 python3 writing-rules/tools/spec_lint.py --gate G0 books/how-to-write-a-tech-book   # …G1 G2 G3 G5 G6 G7
+python3 writing-rules/tools/run_gates.py books/how-to-write-a-tech-book
 
 # 排版（若动了 techbook-typst 或 chapters）
 cd techbook-typst && nu build.nu doctor && nu build.nu lint && nu build.nu book

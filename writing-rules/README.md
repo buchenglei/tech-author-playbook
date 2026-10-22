@@ -31,12 +31,14 @@ writing-rules/
 │   ├── init_book.py            新书脚手架（含 workflow/）
 │   ├── assemble_book.py        units → chapters/chN.typ
 │   ├── sync_handoff.py         交接包同步与时间戳
-│   ├── run_gates.py            紧凑 G0–G7
+│   ├── run_gates.py            紧凑 G0–G8
 │   ├── new_unit.py             单元 spec 预填
 │   ├── memory_maint.py         阶段记忆清理
 │   ├── validate_quality.py     G8 体量/报告/过程验收
+│   ├── check_rule_coverage.py  规则声称 ↔ 脚本实现 一致性
+│   ├── wordcount.py            统一字数口径（G3/G8/合同）
 │   ├── package_book.py         tar.gz 交付打包
-│   └── progress_report.py      进度一页纸
+│   ├── progress_report.py      进度一页纸
 │   └── tests/run_tests.py      工具回归
 └── kit/                        9 份可填写资产
     ├── 01_立项卡.json
@@ -78,7 +80,7 @@ python3 tools/spec_lint.py --gate G2 项目目录         # 结构合法性
 
 ## 规则规模
 
-134 条，MUST 90 / SHOULD 39。附录 A 由脚本从正文派生，手改会被覆盖。
+137 条，MUST 96 / SHOULD 41（以附录 A 实时计数为准）。附录 A 由脚本从正文派生，手改会被覆盖。
 
 MUST 是单元级门禁（不过则该节不能冻结），附录 C 的十条红线是发布级门禁（不过则全书不能交）。两者不是一回事。
 
@@ -86,4 +88,4 @@ MUST 是单元级门禁（不过则该节不能冻结），附录 C 的十条红
 
 1. **读者验证只能由人做。** 规范能给交接包与复现清单，给不了替代。声称"已验证读者能懂"而没有真人测试，属违规。
 2. **附录 F 的数值待校准。** 节长、句长、幽默密度都来自经验，没有真实书稿样本。第一本书写完后按实际数据回填。
-3. **这套规则偏重。** 134 条全跑一遍有成本。第一本书跑完后，删掉三成是正常结果。
+3. **这套规则偏重。** 规则集全跑一遍有成本。第一本书跑完后，删掉三成是正常结果。
