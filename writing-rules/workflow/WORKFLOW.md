@@ -117,6 +117,17 @@ workflow/archive/            ← 旧草稿与过程
 
 ---
 
+## 6.5 交付物（tar.gz）
+
+人工交付以 **`.tar.gz`** 为准。清单与排除项见 [`templates/08_交付规范.md`](templates/08_交付规范.md)；打包：
+
+```bash
+python3 writing-rules/tools/package_book.py books/<slug> --engine techbook-typst
+```
+
+必含：`README.md`、`book.pdf`、`typst/` 可编译工程、`manuscript/`、`handoff/`、`workflow/` 报告、`MANIFEST.txt`。
+排除：日志、archive、DS_Store、draft-*/tmp-*、smoke 产物。包须干净、可离线改、可重编 PDF。
+
 ## 7. 文件落点
 
 ```text

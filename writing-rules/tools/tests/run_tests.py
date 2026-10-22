@@ -214,6 +214,24 @@ def main() -> int:
         r = run([sys.executable, str(mm), str(b)])
         check("memory_maint 归档草稿", r.returncode == 0 and not (b / "workflow" / "draft-old.md").exists(),
               r.stdout + r.stderr)
+        # package_book
+        pkg = ROOT / "writing-rules" / "tools" / "package_book.py"
+        out_tar = td / "pack.tar.gz"
+        r = run([sys.executable, str(pkg), str(b), "--engine", str(ROOT / "techbook-typst"),
+                 "--out", str(out_tar), "--pdf", str(ROOT / "techbook-typst" / "dist" / "book.pdf")])
+        import tarfile as tf
+        names = []
+        if out_tar.is_file():
+            with tf.open(out_tar, "r:gz") as tar:
+                names = tar.getnames()
+        check("package_book 产出 tar.gz", r.returncode == 0 and out_tar.is_file()
+              and any(x.endswith("README.md") for x in names)
+              and any("typst/" in x for x in names)
+              and any("manuscript/" in x for x in names)
+              and any(x.endswith("book.pdf") for x in names),
+              r.stdout + r.stderr + str(names[:8]))
+        check("package_book 无 archive/日志", not any("archive/" in x or x.endswith(".log") for x in names),
+              str(names))
         code, out = gate("G0", b)
         check("init_book 后 G0 可过", code == 0, out)
         r = run([sys.executable, str(asm), str(b), "--engine", str(ROOT / "techbook-typst"),
