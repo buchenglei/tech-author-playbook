@@ -45,8 +45,8 @@
 1. **命名对齐门禁**  
    - 写作工程：`01_立项卡.json` … `08_读者假设.md`、`units/`、`handoff/`  
    - 交接包六文件：`00_README.md` `01_outline.json` `02_glossary.json` `03_ledger.csv` `04_check.json` `05_unverified.md`  
-   - 装配章节：`chapters/chN.typ`（N 为章序）  
-   新增文件若进上述集合，必须同步 `spec_lint.GATE_FILES` / `init_book` / `sync_handoff` / `assemble_book` / `validate_quality` 与文档。
+   - 装配章节：`typst/chapters/chN.typ`（N 为章序；旧 `chapters/chN.typ` 仅兼容）  
+   新增文件若进上述集合，必须同步 `spec_lint.GATE_FILES` / `init_book` / `sync_handoff` / `assemble_book` / `validate_quality` / `quality_gate` 与文档。
 
 2. **不写死托管平台 URL**  
    来源用 `https://…`（外部）或 `repo:相对路径`（本库）。禁止 `github.com/<org>/<repo>` 写进台账、立项卡、测试夹具。
