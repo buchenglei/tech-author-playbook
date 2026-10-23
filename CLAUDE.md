@@ -12,4 +12,5 @@
 python3 writing-rules/tools/tests/run_tests.py
 python3 writing-rules/tools/check_rule_coverage.py
 python3 writing-rules/tools/run_gates.py books/how-to-write-a-tech-book
+python3 writing-rules/tools/quality_gate.py books/how-to-write-a-tech-book
 ```

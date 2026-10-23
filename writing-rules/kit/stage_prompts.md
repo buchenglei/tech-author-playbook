@@ -90,7 +90,8 @@
 > 代码从仓库抽取（带 `<!-- src: path:start-end -->`），跑过再贴，输出不修饰。
 > 术语首现写入 `06_glossary.json`，含一句定义与禁止别名。
 >
-> 写完：跑 `spec_lint.py {本节文件} --profile manuscript`，再按 §7.5 表格逐条给证据。全过才置 `frozen`。
+> 写完：跑 `spec_lint.py {本节文件} --profile manuscript`，再按 §7.5 表格逐条给证据。
+> **不要自己置 `frozen`**：先交独立读者/编辑审阅，审阅者确认后才冻结；脚本只能置 `checking`。
 > 同一规则第 3 次不过就停手，写 BLOCK 卡，不继续打补丁。
 
 ---

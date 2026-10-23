@@ -1,5 +1,5 @@
 {
-  "_说明": "写书工作流阶段状态。人工/Agent 更新即可；非硬状态机。详见 writing-rules/workflow/WORKFLOW.md",
+  "_说明": "写书工作流阶段状态。由 quality_gate.py 硬校验；P1 未人签字不得进入 P2。详见 writing-rules/workflow/WORKFLOW.md",
   "book": "",
   "phase": "P1",
   "outline_contract": "workflow/00_大纲合同.json",
@@ -8,7 +8,29 @@
   "rule_conflict_decision": null,
   "quality_first": true,
   "body_min_token_allowed": false,
-  "phase_note": "P1 样板章 | P2 滚动 | P3 全稿评审 | P4 定稿反哺",
+  "human_in_loop": true,
+  "human_confirmations": {
+    "pilot": {
+      "confirmed": false,
+      "by": "",
+      "at": "",
+      "note": "阶段 1：第 1 章 + 读者/编辑报告 + 03 改进方案 + 04 宪法 + 09/10 融合条款"
+    },
+    "final": {
+      "confirmed": false,
+      "by": "",
+      "at": "",
+      "note": "阶段 4：全稿终审 + 未验证清单 + 定稿确认"
+    }
+  },
+  "pilot": {
+    "chapter": "C01",
+    "units": [],
+    "reader_report": "workflow/01_读者报告-第1章.md",
+    "editor_report": "workflow/02_编辑审校-第1章.md",
+    "author_plan": "workflow/03_作者改进方案.md"
+  },
+  "phase_note": "P1 试点章（人签字） | P2 滚动写作（逐章审阅） | P3 全稿评审（双终审） | P4 定稿反哺（人签字）",
   "reader_persona": "10 年研发经验的资深后端工程师",
   "reader_persona_confirmed_by_human": false,
   "review_every_n_chapters": 3,

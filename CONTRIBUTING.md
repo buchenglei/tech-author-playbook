@@ -80,9 +80,10 @@ python3 writing-rules/tools/assemble_book.py books/my-book
 
 ```bash
 python3 writing-rules/tools/tests/run_tests.py
+python3 writing-rules/tools/quality_gate.py books/<slug>
 ```
 
-覆盖：`spec_lint` 门禁与已修 bug 回归、`md2typ` 装配、`sync_handoff`。新修工具问题请补负例（见 `PROBLEMS.md`）。
+覆盖：`spec_lint` 门禁与已修 bug 回归、`md2typ` 装配、`sync_handoff`、阶段/报告/证据/代码质量门禁。新修工具问题请补负例（见 `PROBLEMS.md`）。
 
 ## 提交说明
 

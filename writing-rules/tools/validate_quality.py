@@ -9,6 +9,7 @@
   4. outline status=frozen 的节有正文，且 state.done_units / gates 可追溯
   5. workflow 报告非空模板（读者/编辑/冲突评估）
   6. 阶段状态：phase 与 chapters_done 不得「全书完成却停在 P1」
+  7. quality_gate：P1 人签字、报告引文/revision、台账 schema、C# 片段、章末块
 
 用法：
   python3 validate_quality.py books/my-book
@@ -25,11 +26,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from wordcount import cjk_len  # noqa: E402  全仓库统一字数口径
+from quality_gate import run_checks as run_quality_gate  # noqa: E402  质量优先硬门禁
 
 
 def load_json(p: Path):
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        return json.loads(p.read_text(encoding="utf-8-sig"))
     except Exception:
         return None
 
@@ -193,6 +195,14 @@ def main() -> int:
         if pending_h and frozen >= max(1, len(secs) // 2):
             fail(f"仍有 pending_human={pending_h}，却已冻结大半书稿（L2/定稿权在人）",
                  "VER-01", "P1")
+
+    # 质量优先硬门禁：阶段/报告/证据/代码/结构。
+    # 保持向后兼容：没有 workflow 的书只产生 P1 提示，不替代本文件的合同/体量门禁。
+    try:
+        q0, q1 = run_quality_gate(book)
+        issues.extend(q0 + q1)
+    except Exception as e:  # 质量门禁自身失败也要显式红，不能静默跳过
+        fail(f"quality_gate 执行失败：{e}", "QUALITY")
 
     p0 = [i for i in issues if i["level"] == "P0"]
     p1 = [i for i in issues if i["level"] != "P0"]

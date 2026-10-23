@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""run_gates.py — 一次跑完 G0–G7，只打印紧凑结果（省 Token）。
+"""run_gates.py — 一次跑完 G0–G8（G8 含 quality_gate），只打印紧凑结果（省 Token）。
 
 用法：
   python3 run_gates.py books/my-book

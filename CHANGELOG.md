@@ -5,6 +5,10 @@
 ## [Unreleased]
 
 ### Added
+- `tools/quality_gate.py`：质量优先硬门禁——P1 试点章未人签字不得进 P2、无人值守只能 draft、报告必须带 `文件:行号 + 原文引句 + reviewed_revision`、台账 schema、C# 片段缺括号/未标 illustrative、章末块/质量预算；接入 `validate_quality`（G8）
+- 规则解析器修正：支持 1–6 字母域（`CLAIM` / `HUMOR` / `B` / `F` 不再漏表）；A 总表 145 条 / MUST 103 / SHOULD 42
+- `init_book --family/--target-words`：立项卡与 outline 同源，修复 B/C 混写；脚手架不再把 `03_单元spec.md` 当正文 lint
+- `templates/00_阶段状态.json` 增加 `human_in_loop`、`human_confirmations.pilot/final`、`pilot`；`init_book` 生成 `workflow/06_终审/`
 - `tools/check_rule_coverage.py`：规则「声称脚本」与 tools 实现的真源一致性巡检（RULE-01 自动化）；`run_tests.py` 挂入
 - `tools/wordcount.py`：G3/G8/合同共用字数口径，spec_lint 与 validate_quality 统一 import
 - `CLAUDE.md` 与根 `AGENTS.md`/`README.md` 顶部三行入口判别器（写书 / 维护 / 只用排版）
@@ -17,6 +21,9 @@
 - **check_claims 收紧**：不再「段内见 E- 即整段免检」，改为逐句核对
 - **L-VOL-01 落地**：`validate_quality` 以 `rule_id=L-VOL-01` 产出体量锁；其余悬空「脚本 X」降为「自检」或改指真实 ID
 - **09 报告名单一**为 `09_大纲×规范融合评估.md`，清除旧名
+- **G1/G2 占位不再假绿**：读者假设表/outline 含「示例假设/待定章名/这一节回答什么」等占位即 P0
+- **G3 脚手架降噪**：无单元正文时返回 N/A（P1），不再把 `03_单元spec.md`/`07_style.kernel.md` 当正文
+- **B-01/F-01 修正**：`MUST｜登记` 改为 `MUST｜自检｜阻断`，不再被规则解析器隐藏
 - 金样板定位对齐：README/handoff 明确「结构示范、体量未达 G8」
 
 ### Changed

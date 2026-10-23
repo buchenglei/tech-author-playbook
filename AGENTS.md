@@ -36,7 +36,7 @@
 | 成书排版引擎 | `techbook-typst/` | `src/` | `nu build.nu doctor && lint && book` |
 | 金样板书稿 | `books/how-to-write-a-tech-book/` | `units/` + `02_outline.json` | 门禁 + `assemble_book.py` |
 
-交叉点只有工具：`tools/spec_lint.py`、`init_book.py`、`assemble_book.py`、`sync_handoff.py`、`validate_quality.py`、`check_rule_coverage.py`、`md2typ.py`。改交叉点必须三线都回归。
+交叉点只有工具：`tools/spec_lint.py`、`init_book.py`、`assemble_book.py`、`sync_handoff.py`、`validate_quality.py`、`quality_gate.py`、`check_rule_coverage.py`、`md2typ.py`。改交叉点必须三线都回归。
 
 ---
 
@@ -125,6 +125,7 @@ python3 writing-rules/tools/check_rule_coverage.py
 # 写作门禁（金样板；G8 对结构示范书预期红）
 python3 writing-rules/tools/spec_lint.py --gate G0 books/how-to-write-a-tech-book   # …G1 G2 G3 G5 G6 G7
 python3 writing-rules/tools/run_gates.py books/how-to-write-a-tech-book
+python3 writing-rules/tools/quality_gate.py books/how-to-write-a-tech-book
 
 # 排版（若动了 techbook-typst 或 chapters）
 cd techbook-typst && nu build.nu doctor && nu build.nu lint && nu build.nu book
@@ -180,4 +181,4 @@ cd techbook-typst && nu build.nu doctor && nu build.nu lint && nu build.nu book
 | 排版契约 | [`techbook-typst/AGENTS.md`](techbook-typst/AGENTS.md) |
 | 闭眼建书 | `writing-rules/tools/init_book.py` / `assemble_book.py` |
 | 紧凑门禁 / 清记忆 | `writing-rules/tools/run_gates.py` / `memory_maint.py` |
-| 质量体量验收 | `writing-rules/tools/validate_quality.py` |
+| 质量体量验收 | `writing-rules/tools/validate_quality.py` / `quality_gate.py` |

@@ -35,6 +35,7 @@ writing-rules/
 │   ├── new_unit.py             单元 spec 预填
 │   ├── memory_maint.py         阶段记忆清理
 │   ├── validate_quality.py     G8 体量/报告/过程验收
+│   ├── quality_gate.py         质量优先硬门禁（阶段/报告/证据/代码/结构）
 │   ├── check_rule_coverage.py  规则声称 ↔ 脚本实现 一致性
 │   ├── wordcount.py            统一字数口径（G3/G8/合同）
 │   ├── package_book.py         tar.gz 交付打包
@@ -61,6 +62,8 @@ writing-rules/
 ```bash
 python3 tools/init_book.py my-book --title "书名" --claim "可证伪承诺"
 python3 tools/spec_lint.py --gate G0 books/my-book
+# P1 只写第 1 章；人签字后才进入批量
+python3 tools/quality_gate.py books/my-book
 # 写 units/ … 完成后
 python3 tools/assemble_book.py books/my-book --engine ../techbook-typst --compile
 ```
@@ -74,13 +77,14 @@ python3 tools/spec_lint.py 你的书稿.md --profile manuscript
 python3 tools/spec_lint.py 你的书稿.md --json        # 机器可读，便于按 rule_id 修
 python3 tools/spec_lint.py --gate G0 项目目录         # 立项卡完整性
 python3 tools/spec_lint.py --gate G2 项目目录         # 结构合法性
+python3 tools/quality_gate.py 项目目录                # 阶段/报告/证据/代码/结构
 ```
 
 退出码：0 通过 / 1 有 P1 / 2 有 P0。
 
 ## 规则规模
 
-137 条，MUST 96 / SHOULD 41（以附录 A 实时计数为准）。附录 A 由脚本从正文派生，手改会被覆盖。
+145 条，MUST 103 / SHOULD 42（以附录 A 实时计数为准）。附录 A 由脚本从正文派生，手改会被覆盖。
 
 MUST 是单元级门禁（不过则该节不能冻结），附录 C 的十条红线是发布级门禁（不过则全书不能交）。两者不是一回事。
 

@@ -174,3 +174,28 @@
 **验证**：`run_tests.py` 42 passed；`check_rule_coverage.py` COVERAGE_PASS；`run_gates` 对金样板 G4 FAIL、G8 FAIL（与 handoff 声明一致）。
 
 **教训**：**示范物与门禁矛盾时，Agent 跟随示范物。** 改门禁后的三问——金样板还过吗？README 提到了吗？判定标注还真实吗？——任一答不上就不算完成。
+
+---
+
+## P13. 真实书稿 workflow 空转：P1 未签字、自动冻结、证据被清除（P0，质量）
+
+**现象**（C# 交付包复核）：
+- `workflow/03_作者改进方案.md`、`05_章节滚动评估.md`、`07_项目反哺报告.md` 是空模板；没有 `workflow/06_终审/`；阶段 1 没有第 1 章读者/编辑报告。
+- `00_阶段状态.json` 写 `phase=P3` 与「视为默示确认」；`04_写作宪法`、`09`、`10` 仍是「待确认/待复核」；`reader_persona_confirmed_by_human=false`。
+- `05_state.json` 是 `stage=S2`、`done_units` 仅 C00 六节，而 outline 是 86/86 frozen；`04_check.json` 自称全绿，当前工具复跑 G3/G4/G5/G7/G8 红。
+- `bulk_write.py` 按字数把节自动写成 `frozen`；`strip_evidence_tags.py` 删除正文 360 处 `E-xxx`，导致读者报告「每个数字可顺藤摸瓜」无法成立。
+- C# 片段多处以 `foo.Bar;` 形式缺调用括号；PDF 编译 0 error 被当成代码正确。
+
+**根因**：
+1. WORKFLOW 的「不做硬状态机」被实现成「没有状态机」；`validate_quality` 只在 `frozen ≥ 半数` 时看 gates。
+2. 报告只查「非空」，不查引文；冻结由脚本自动完成，不是审阅动作。
+3. 代码只验 Typst 编译，没有 C# 片段校验；台账从不被加载。
+4. Agent 用「默示确认」替代人签字，绕过了 P1/P3 的人类闸门。
+
+**修法**：
+1. 新增 `quality_gate.py`：P1 未签字不得进 P2；无人值守只能 draft；报告必须带 `文件:行号 + 原句 + reviewed_revision`；`done_units` 必须等于 frozen；台账 schema 与 E0/E1/E3 校验；C# 片段缺括号/未标 illustrative 即 P0；章末块与质量预算。
+2. `init_book` 生成 `human_confirmations.pilot/final` 与 `workflow/06_终审/`；`--family/--target-words` 同源。
+3. 规范/模板/README/WORKFLOW 把「冻结是审阅动作」「P1 试点章」「无人值守 draft」写死。
+4. `run_tests.py` 新增负例：缺 spec、4 行报告、P1 未签字、坏 CSV 台账、缺调用括号、illustrative 豁免。
+
+**验证**：`run_tests.py` 50 passed；`quality_gate.py` 对 C# 交付包报 P0（阶段/报告/台账/代码），对正常 P2 夹具无 WF P0；金样板 G8 仍按结构示范预期红。

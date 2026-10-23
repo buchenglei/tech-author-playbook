@@ -126,7 +126,7 @@ S0 立项 ──► S1 读者 ──► S2 大纲
             交接 / 出版  ◄────  dist/book.pdf + 校验清单
 ```
 
-流程示范书：`books/how-to-write-a-tech-book/`（**结构示范**，G0–G7 通过，**体量未达 G8 合同下限，不可当「写成这样就能交」的样例**）→ `assemble_book.py` → `techbook-typst/chapters/chN.typ` → `dist/book.pdf`。完整交付形态见 `writing-rules/workflow/templates/08_交付规范.md` 与 `docs/eval/` 中的真实书稿复盘。
+流程示范书：`books/how-to-write-a-tech-book/`（**结构示范**；当前 G0–G3、G5–G7 通过，**G4 未实现、G8 未达合同下限**，不可当「写成这样就能交」的样例）→ `assemble_book.py` → `techbook-typst/chapters/chN.typ` → `dist/book.pdf`。完整交付形态见 `writing-rules/workflow/templates/08_交付规范.md` 与 `docs/eval/` 中的真实书稿复盘。
 
 闭眼流水线：`init_book.py` 建工程 → 写 `units/` → `assemble_book.py --compile` 出 PDF。
 
@@ -149,6 +149,8 @@ S0 立项 ──► S1 读者 ──► S2 大纲
 4. **产物只写 `dist/`**：同名覆盖，不堆 `-new` / `-latest`。
 5. **改引擎要回归**：动 `techbook-typst/src/` 后必须 `doctor + lint + book` 并目视 PDF。
 6. **读者验证只能由人做**：Agent 不得声称「读者已验证」。
+7. **P1 未签字不得批量写作**：第 1 章没有读者/编辑报告 + 人签字，不得进入第 2 章；`quality_gate.py` 会拦。
+8. **冻结是审阅动作**：任何脚本不得自动写 `frozen`；代码/证据未验不得冻结。
 
 ---
 
@@ -175,6 +177,7 @@ S0 立项 ──► S1 读者 ──► S2 大纲
 | `writing-rules/如何改规范.md` | 改规则贡献指南 | 动 MUST/阈值/门禁时 |
 | `writing-rules/kit/stage_prompts.md` | S-1…S7 阶段提示词 | 按阶段取用 |
 | `writing-rules/tools/spec_lint.py` | 校验与门禁 | 校验、发布前 |
+| `writing-rules/tools/quality_gate.py` | 质量优先硬门禁 | P1 签字、报告、台账、代码 |
 | **`techbook-typst/AGENTS.md`** | **排版与成书契约** | 写/改/编书稿 |
 | `techbook-typst/README.md` | 排版人类速览 | 人读或要最短示例 |
 | `techbook-typst/DESIGN.md` / `FONTS.md` | 取舍 / 字体 | 改视觉、调字体 |
@@ -188,6 +191,12 @@ S0 立项 ──► S1 读者 ──► S2 大纲
 | Typst 0.15+ | 编译 PDF | `techbook-typst/` |
 | Nushell（`nu`） | 构建脚本 | `techbook-typst/build.nu` |
 | Python 3 | 写作校验 | `writing-rules/tools/spec_lint.py` |
+
+快速自检写作线：
+
+```bash
+python3 writing-rules/tools/quality_gate.py books/<slug>
+```
 
 快速自检排版线：
 

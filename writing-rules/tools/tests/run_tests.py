@@ -20,6 +20,8 @@ LINT = ROOT / "writing-rules" / "tools" / "spec_lint.py"
 MD2TYP = ROOT / "techbook-typst" / "tools" / "md2typ.py"
 SYNC = ROOT / "writing-rules" / "tools" / "sync_handoff.py"
 BOOK = ROOT / "books" / "how-to-write-a-tech-book"
+sys.path.insert(0, str(ROOT / "writing-rules" / "tools"))
+import quality_gate  # noqa: E402
 
 PASS = 0
 FAIL = 0
@@ -218,7 +220,12 @@ def main() -> int:
         check("init_book 生成大纲合同", (b / "workflow" / "00_大纲合同.json").is_file(), "")
         check("init_book 生成 workflow", (b / "workflow" / "00_阶段状态.json").is_file()
               and (b / "workflow" / "04_写作宪法.md").is_file()
-              and (b / "workflow" / "01_读者报告.md").is_file(), r.stdout + r.stderr)
+              and (b / "workflow" / "01_读者报告.md").is_file()
+              and (b / "workflow" / "06_终审").is_dir(), r.stdout + r.stderr)
+        card = json.loads((b / "01_立项卡.json").read_text(encoding="utf-8"))
+        outline = json.loads((b / "02_outline.json").read_text(encoding="utf-8"))
+        check("init_book family 同源", card.get("family") == outline["book"].get("family"),
+              f"{card.get('family')} vs {outline['book'].get('family')}")
         # new_unit 预填
         nu = ROOT / "writing-rules" / "tools" / "new_unit.py"
         r = run([sys.executable, str(nu), str(b), "C01-S1"])
@@ -247,11 +254,12 @@ def main() -> int:
         if out_tar.is_file():
             with tf.open(out_tar, "r:gz") as tar:
                 names = tar.getnames()
+        pdf_exists = (ROOT / "techbook-typst" / "dist" / "book.pdf").is_file()
         check("package_book 产出 tar.gz", r.returncode == 0 and out_tar.is_file()
               and any(x.endswith("README.md") for x in names)
               and any("typst/" in x for x in names)
               and any("manuscript/" in x for x in names)
-              and any(x.endswith("book.pdf") for x in names),
+              and (not pdf_exists or any(x.endswith("book.pdf") for x in names)),
               r.stdout + r.stderr + str(names[:8]))
         with tf.open(out_tar, "r:gz") as tar:
             rd = next(n for n in tar.getnames() if n.endswith("README.md"))
@@ -303,6 +311,11 @@ def main() -> int:
     check("check_rule_coverage 可跑", "COVERAGE_" in r.stdout, r.stdout[:300])
     check("check_rule_coverage 无 P0 悬空脚本", "COVERAGE_PASS" in r.stdout,
           r.stdout[:500])
+    r = run([sys.executable, str(LINT), str(ROOT / "writing-rules" / "spec"), "--registry"])
+    check("规则总表 145 条", "共 **145** 条" in r.stdout, r.stdout[:300])
+    check("规则总表含 CLAIM/HUMOR/B/F",
+          all(x in r.stdout for x in ("CLAIM-01", "HUMOR-01", "B-01", "F-01")),
+          r.stdout[-800:])
 
     print("== validate_quality ==")
     vq = ROOT / "writing-rules" / "tools" / "validate_quality.py"
@@ -352,6 +365,74 @@ def main() -> int:
         }, ensure_ascii=False), encoding="utf-8")
         r = run([sys.executable, str(vq), str(b2)])
         check("默示确认被拒", "默示" in r.stdout, r.stdout[:300])
+
+    print("== quality_gate ==")
+    with tempfile.TemporaryDirectory() as td:
+        b = Path(td) / "qbook"
+        (b / "units").mkdir(parents=True)
+        (b / "workflow").mkdir()
+        outline = {
+            "book": {"title": "Q", "type": "实战书", "claim": "claim enough words",
+                     "target_words": 30000, "family": "B"},
+            "chapters": [{
+                "id": "C01", "title": "章", "purpose": "p", "produces": "o",
+                "role": {"phenomenon": "C01-S1", "mechanism": "C01-S1", "cost": "C01-S1"},
+                "sections": [{"id": "C01-S1", "title": "节", "question": "q",
+                              "produces": "p", "bridge": "b", "layer": "现象",
+                              "deps": [], "words": 2000, "status": "checking"}],
+            }],
+            "paths": [{"name": "linear", "order": ["C01"]}],
+        }
+        (b / "02_outline.json").write_text(json.dumps(outline, ensure_ascii=False), encoding="utf-8")
+        (b / "05_state.json").write_text(json.dumps({
+            "book": "Q", "stage": "S2", "done_units": ["C01-S1"],
+        }), encoding="utf-8")
+        (b / "workflow" / "00_阶段状态.json").write_text(json.dumps({
+            "phase": "P1", "human_in_loop": True,
+        }, ensure_ascii=False), encoding="utf-8")
+        (b / "04_ledger.csv").write_text(
+            "id,claim,level,source_title,url,version,locator,cmd,exit_code,output_hash,date,unit\n"
+            "E-001,本机实测,E0,本机,,1,run,dotnet --version,0,abc,2026-01-01,C01-S1\n",
+            encoding="utf-8")
+        (b / "units" / "C01-S1.spec.md").write_text(
+            "# spec\n\n## 6. claims\n\n| A1 | x | E0 | cmd | E-001 |\n", encoding="utf-8")
+        (b / "units" / "C01-S1.md").write_text(
+            "# 节\n\n## 小节\n\n```csharp\nvar x = foo.Bar;\n```\n", encoding="utf-8")
+
+        p0, _ = quality_gate.run_checks(b)
+        check("quality_gate 捕获缺调用括号", any(i["rule_id"] == "CODE-03" for i in p0),
+              str(p0)[:300])
+
+        (b / "units" / "C01-S1.md").write_text(
+            "# 节\n\n## 小节\n\n<!-- illustrative -->\n\n```csharp\nvar x = foo.Bar;\n```\n",
+            encoding="utf-8")
+        p0, _ = quality_gate.run_checks(b)
+        check("illustrative 代码可豁免", not any(i["rule_id"] == "CODE-03" for i in p0),
+              str(p0)[:300])
+
+        (b / "workflow" / "01_读者报告.md").write_text(
+            "# 读者报告\n\n评审对象：第 1 章\n日期：2026-10-22\n读完了，整体可读。\n",
+            encoding="utf-8")
+        p0, _ = quality_gate.run_checks(b)
+        check("4 行报告必须红", any(i["rule_id"] in ("RPT-02", "RPT-04") for i in p0),
+              str(p0)[:300])
+
+        (b / "workflow" / "00_阶段状态.json").write_text(json.dumps({
+            "phase": "P2", "human_in_loop": True, "rule_conflict_status": "confirmed",
+            "rule_conflict_decision": "人已确认", "reader_persona_confirmed_by_human": False,
+            "human_confirmations": {},
+        }, ensure_ascii=False), encoding="utf-8")
+        p0, _ = quality_gate.run_checks(b)
+        check("P1 未签字不得进 P2", any(i["rule_id"] == "WF-11" for i in p0),
+              str(p0)[:400])
+
+        (b / "04_ledger.csv").write_text(
+            "id,claim,level,source_title,url,version,locator,cmd,exit_code,output_hash,date,unit\n"
+            "E-001,claim,with,comma,E0,本机,1,run,dotnet --version,0,abc,2026-01-01,C01-S1\n",
+            encoding="utf-8")
+        ev = quality_gate.check_evidence(b, outline)
+        check("坏 CSV 台账必须红", any(i["rule_id"] in ("EVD-02", "EVD-04") for i in ev),
+              str(ev)[:300])
 
     print("== 金样板 smoke ==")
     if BOOK.is_dir():

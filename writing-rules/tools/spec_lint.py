@@ -31,14 +31,19 @@ from wordcount import chinese_len, cjk_len  # noqa: E402  统一字数口径
 
 DOMAIN_ORDER = ["RULE", "ENG", "TOP", "AUD", "STR", "UNIT", "DEM",
                 "LANG", "HUMOR", "FMT", "CITE", "TIME", "VER", "BOOK",
-                "TEAM", "B", "F"]
+                "TEAM", "CLAIM", "B", "F"]
 
 DOMAIN_NAME = {
     "RULE": "执行契约", "ENG": "作者能力", "TOP": "立项", "AUD": "读者",
     "STR": "结构", "UNIT": "单元", "DEM": "族别要求", "LANG": "语言",
     "HUMOR": "风趣", "FMT": "呈现", "CITE": "引用", "TIME": "时效",
-    "VER": "校验", "BOOK": "书稿工程", "TEAM": "交接", "B": "资产", "F": "校准",
+    "VER": "校验", "BOOK": "书稿工程", "TEAM": "交接", "CLAIM": "断言",
+    "B": "资产", "F": "校准",
 }
+
+# 脚手架/模板占位：G1/G2/G3 不得把它们当真实内容放行。
+PLACEHOLDER_TERMS = ("示例假设", "请改写", "待改写", "待定", "TODO", "占位",
+                     "这一节回答什么", "待定章名", "待填")
 
 # 禁用词（§6.3）。四类，命中即改。
 FORBIDDEN = OrderedDict([
@@ -68,11 +73,11 @@ MAX_SENT = 60          # LANG-05（附录 F 待校准）
 MAX_PARA_SENTS = 6     # LANG-11
 MIN_PARA_AVG = 20      # LANG-12（低于此值提示碎片化）
 
-RULE_RE = re.compile(r"\*\*([A-Z]{3,4}-\d{2})\*\*（([^）]*)）")
-ID_TOKEN_RE = re.compile(r"(?<![A-Za-z-])([A-Z]{3,4}-\d{2})(?![0-9])")
-ID_CELL_RE = re.compile(r"^([A-Z]{3,4}-\d{2})$")
+RULE_RE = re.compile(r"\*\*([A-Z]{1,6}-\d{2})\*\*（([^）]*)）")
+ID_TOKEN_RE = re.compile(r"(?<![A-Za-z-])([A-Z]{1,6}-\d{2})(?![0-9])")
+ID_CELL_RE = re.compile(r"^([A-Z]{1,6}-\d{2})$")
 XREF_RE = re.compile(r"§(\d+(?:\.\d+)*)")
-HEAD_RE = re.compile(r"^(#{2,4})\s+(.*)$")
+HEAD_RE = re.compile(r"^(#{1,4})\s+(.*)$")
 CODE_RE = re.compile(r"^\s*```")
 
 # ---------------------------------------------------------------- 工具函数
@@ -95,7 +100,8 @@ def split_lines(text):
             continue
         m = HEAD_RE.match(line)
         if m and not in_code:
-            if len(m.group(1)) == 2:
+            # H1 也作为 section 兜底：附录 B/F 没有 H2，否则规则会被挂到上一分片的末节。
+            if len(m.group(1)) in (1, 2):
                 section = m.group(2).strip()
             out.append((i, line, False, section))
             continue
@@ -117,7 +123,7 @@ def paragraphs(lines):
     for no, line, in_code, section in lines:
         s = line.strip()
         bullet = bool(re.match(r"^([-*+]\s|\d+[.)]\s)", s))
-        is_rule = bool(re.match(r"^\*\*[A-Z]{3,4}-\d{2}\*\*", s))
+        is_rule = bool(re.match(r"^\*\*[A-Z]{1,6}-\d{2}\*\*", s))
         empty = (not s) or in_code or s.startswith("|") or is_rule \
             or bullet or s.startswith("---") and set(s) <= {"-", " "}
         if empty:
@@ -219,6 +225,9 @@ def check_rules(text, rules, table_only, dup, extra_ids=frozenset(), profile="sp
                 continue
             for m in ID_TOKEN_RE.finditer(line):
                 rid = m.group(1)
+                # 只把已知规范域当规则 ID；C-05 是宪法条款，不是规则。
+                if rid.split("-", 1)[0] not in DOMAIN_NAME:
+                    continue
                 if rid.startswith(("S-", "L-", "E-", "LANG-")) and rid not in rules:
                     # S-/L- 是脚本内部编号；LANG- 若未定义仍需报
                     if not rid.startswith("LANG-"):
@@ -690,28 +699,29 @@ def gate(which, base):
             return [{"rule_id": "G1", "level": "P0",
                      "msg": "缺读者假设表（08_读者假设.md）"}]
         text = read(p)
-        # AUD-01：假设表行必须带 given/inferred/assumed 标记
-        assume_rows = [ln for ln in text.splitlines()
-                       if ln.strip().startswith("|") and "假设" in ln and "---" not in ln]
-        # 数据行：含 | 且至少出现一次标记词
+        # 脚手架/模板占位不得当真实读者假设。
+        hit = [x for x in PLACEHOLDER_TERMS if x in text]
+        if hit:
+            issues.append({"rule_id": "AUD-01", "level": "P0",
+                           "msg": f"读者假设表含占位文本：{','.join(hit[:3])}"})
+        # AUD-01：假设表每一数据行都必须带 given/inferred/assumed 标记。
         markers = ("given", "inferred", "assumed")
-        data_rows = []
+        data_rows, unmarked = [], []
         for ln in text.splitlines():
             s = ln.strip()
             if not s.startswith("|") or set(s.replace("|", "").replace("-", "").replace(":", "").strip()) == set():
                 continue
-            if any(m in s for m in markers):
-                data_rows.append(s)
+            if "标记" in s and "假设" in s:  # 表头
+                continue
+            data_rows.append(s)
+            if not any(m in s for m in markers):
+                unmarked.append(s)
         if not data_rows:
             issues.append({"rule_id": "AUD-01", "level": "P0",
-                           "msg": "假设表缺少 given/inferred/assumed 标记行"})
-        unmarked = 0
-        for s in data_rows:
-            if not any(m in s for m in markers):
-                unmarked += 1
+                           "msg": "假设表缺少数据行（given/inferred/assumed）"})
         if unmarked:
             issues.append({"rule_id": "AUD-01", "level": "P0",
-                           "msg": f"假设表 {unmarked} 行无来源标记（按 assumed 处理）"})
+                           "msg": f"假设表 {len(unmarked)} 行无来源标记（按 assumed 处理）"})
         # AUD-04：起点能力清单须是动作，能检的是存在性 + 每条非空
         if "起点" not in text:
             issues.append({"rule_id": "AUD-04", "level": "P0",
@@ -751,6 +761,11 @@ def gate(which, base):
             d = json.loads(read(p))
         except Exception as e:
             return [{"rule_id": "G2", "level": "P0", "msg": f"outline 不是合法 JSON：{e}"}]
+        blob = json.dumps(d, ensure_ascii=False)
+        hit = [x for x in PLACEHOLDER_TERMS if x in blob]
+        if hit:
+            issues.append({"rule_id": "STR-03", "level": "P0",
+                           "msg": f"outline 含占位文本：{','.join(hit[:3])}"})
         types = {"原理书", "实战书", "案例书", "排错书", "工具书", "演进书", "通识书"}
         meta = d.get("book") or d.get("doc") or {}
         if meta.get("type") not in types:
@@ -836,11 +851,13 @@ def gate(which, base):
                            if f.endswith(".md") and not f.endswith(".spec.md")
                            and not f.endswith(".check.json")]
             if not targets:
+                # 扁平书根兜底；排除模板/读者假设/文风基线，避免把模板自身当正文。
                 targets = [os.path.join(target, f) for f in sorted(os.listdir(target))
-                           if f.endswith(".md") and not f.startswith("00_")
-                           and not f.endswith(".spec.md")]
+                           if f.endswith(".md") and not f.startswith(("00_", "03_", "07_", "08_"))
+                           and f != "README.md" and not f.endswith(".spec.md")]
             if not targets:
-                return [{"rule_id": which, "level": "P0", "msg": "目录下没有可校验的正文 .md"}]
+                return [{"rule_id": which, "level": "P1",
+                         "msg": "尚未有可校验的单元正文（N/A：等 S3 第一单元）"}]
         elif os.path.isfile(base):
             targets = [base]
         else:

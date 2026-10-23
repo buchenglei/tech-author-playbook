@@ -43,7 +43,8 @@ def dump_json(path: Path, data) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def scaffold(slug: str, title: str, claim: str, dest_root: Path) -> Path:
+def scaffold(slug: str, title: str, claim: str, dest_root: Path,
+             family: str = "", target_words: int = 0) -> Path:
     book = dest_root / slug
     if book.exists():
         raise SystemExit(f"错误：目录已存在 {book}")
@@ -81,17 +82,20 @@ def scaffold(slug: str, title: str, claim: str, dest_root: Path) -> Path:
         "待改写：可判定的停写条件 1",
         "待改写：可判定的停写条件 2",
     ]
+    if family:
+        card["family"] = family
     dump_json(book / "01_立项卡.json", card)
 
-    # outline：最小合法骨架（一章三节），字段名与 schema 一致
+    # outline：最小合法骨架（一章三节），字段名与 schema 一致。
+    # family 必须与立项卡同源，禁止 init 时一边 B 一边 C。
     outline = {
         "_说明": "结构的唯一真源（§3.3）。G2 依据。字段名与层级不得改动。",
         "book": {
             "title": title or slug,
             "type": "实战书",
             "claim": claim or "",
-            "target_words": 35000,
-            "family": "C",
+            "target_words": target_words or 35000,
+            "family": card.get("family") or "C",
             "review_by": "2027-01",
         },
         "volumes": [],
@@ -165,6 +169,7 @@ def scaffold(slug: str, title: str, claim: str, dest_root: Path) -> Path:
     wf_dst.mkdir(exist_ok=True)
     (wf_dst / "memory").mkdir(exist_ok=True)
     (wf_dst / "archive").mkdir(exist_ok=True)
+    (wf_dst / "06_终审").mkdir(exist_ok=True)
     for name in ("00_阶段状态.json", "00_大纲合同.json", "01_读者报告.md", "02_编辑审校.md",
                  "03_作者改进方案.md", "04_写作宪法.md", "05_章节滚动评估.md",
                  "06_终审报告包说明.md", "07_项目反哺报告.md", "08_交付规范.md",
@@ -217,6 +222,10 @@ def main() -> int:
     ap.add_argument("--title", default="")
     ap.add_argument("--claim", default="")
     ap.add_argument("--dest", default=str(ROOT / "books"), help="父目录（默认 books/）")
+    ap.add_argument("--family", default="", choices=["", "A", "B", "C", "mixed"],
+                    help="主题族；与 outline/立项卡同源")
+    ap.add_argument("--target-words", type=int, default=0,
+                    help="全书目标字数（默认 35000；合同页数仍须另行填写）")
     ap.add_argument("--from-golden", default="", help="从金样板拷贝结构（不拷贝进度）")
     a = ap.parse_args()
 
@@ -228,11 +237,13 @@ def main() -> int:
             raise SystemExit(f"错误：金样板不存在 {golden}")
         book = clone_golden(a.slug, golden, dest_root)
     else:
-        book = scaffold(a.slug, a.title, a.claim, dest_root)
+        book = scaffold(a.slug, a.title, a.claim, dest_root,
+                        family=a.family, target_words=a.target_words)
 
     print(f"inited {book}")
     print("标准文件：", ", ".join(BOOK_FILES))
     print(f"下一步：G0  python3 writing-rules/tools/spec_lint.py --gate G0 {book}")
+    print(f"        质量  python3 writing-rules/tools/quality_gate.py {book}")
     print(f"        出书  python3 writing-rules/tools/assemble_book.py {book} --compile")
     return 0
 
