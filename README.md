@@ -126,9 +126,9 @@ S0 立项 ──► S1 读者 ──► S2 大纲
             交接 / 出版  ◄────  dist/book.pdf + 校验清单
 ```
 
-流程示范书：`books/how-to-write-a-tech-book/`（**结构示范**；当前 G0–G3、G5–G7 通过，**G4 未实现、G8 未达合同下限**，不可当「写成这样就能交」的样例）→ `assemble_book.py` → `techbook-typst/chapters/chN.typ` → `dist/book.pdf`。完整交付形态见 `writing-rules/workflow/templates/08_交付规范.md` 与 `docs/eval/` 中的真实书稿复盘。
+流程示范书：`books/how-to-write-a-tech-book/`（**结构示范**；当前 G0–G3、G5–G7 通过，**G4 未实现、G8 未达合同下限**，不可当「写成这样就能交」的样例）→ `assemble_book.py` → 书内 `typst/chapters/chN.typ` → `typst/dist/book.pdf`。完整交付形态见 `writing-rules/workflow/templates/08_交付规范.md` 与 `docs/eval/` 中的真实书稿复盘。
 
-闭眼流水线：`init_book.py` 建工程 → 写 `units/` → `assemble_book.py --compile` 出 PDF。
+闭眼流水线：`init_book.py` 建工程 → 写 `units/` → `assemble_book.py --compile` 在 `books/<slug>/typst/` 出 PDF，不覆盖引擎样书。
 
 | 阶段 | 内容线产出 | 排版线动作 |
 | --- | --- | --- |

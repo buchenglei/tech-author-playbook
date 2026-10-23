@@ -92,8 +92,13 @@
 | 有序/无序列表 | Typst 列表 |
 | 围栏代码 | ` ``` ` 代码框 |
 | 「## 附：…」表 | 同表格映射 |
+| `![alt](p)` | `#fig(image(p), caption: [alt])` 或行内 `#image`；`--asset-dir` 复制资源 |
+| `[text](url)` | `#link("url")[text]` |
+| `> 引用` | `#quote[...]` |
+| `---` / `***` | `#line(length: 100%)` |
+| `<!-- caption: ... -->` | 表注（表前/表后均可） |
 
-**残留**：语义组件（#goal/#tip/#best）仍需编者在 Typst 里补，自动转换只保结构不保修辞。这是有意边界：排版线不决定文风。
+**残留**：语义组件（#goal/#tip/#best）仍需编者在 Typst 里补，自动转换只保结构不保修辞。这是有意边界：排版线不决定文风。`#fig/#link/#quote` 已自动转换，图片资源由 `--asset-dir` 复制到书内 `typst/assets/`。
 
 ---
 
@@ -198,4 +203,4 @@
 3. 规范/模板/README/WORKFLOW 把「冻结是审阅动作」「P1 试点章」「无人值守 draft」写死。
 4. `run_tests.py` 新增负例：缺 spec、4 行报告、P1 未签字、坏 CSV 台账、缺调用括号、illustrative 豁免。
 
-**验证**：`run_tests.py` 50 passed；`quality_gate.py` 对 C# 交付包报 P0（阶段/报告/台账/代码），对正常 P2 夹具无 WF P0；金样板 G8 仍按结构示范预期红。
+**验证**：`run_tests.py` 57 passed；`quality_gate.py` 对 C# 交付包报 P0（阶段/报告/台账/代码），对正常 P2 夹具无 WF P0；金样板 G8 仍按结构示范预期红。

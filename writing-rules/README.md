@@ -29,7 +29,7 @@ writing-rules/
 │   ├── spec_lint.py            L0 校验器 + 门禁 + 规则总表生成
 │   ├── build_spec.py           分片拼接（调试/单页）
 │   ├── init_book.py            新书脚手架（含 workflow/）
-│   ├── assemble_book.py        units → chapters/chN.typ
+│   ├── assemble_book.py        units → 书内 typst/chapters/chN.typ
 │   ├── sync_handoff.py         交接包同步与时间戳
 │   ├── run_gates.py            紧凑 G0–G8
 │   ├── new_unit.py             单元 spec 预填
@@ -64,7 +64,7 @@ python3 tools/init_book.py my-book --title "书名" --claim "可证伪承诺"
 python3 tools/spec_lint.py --gate G0 books/my-book
 # P1 只写第 1 章；人签字后才进入批量
 python3 tools/quality_gate.py books/my-book
-# 写 units/ … 完成后
+# 写 units/ … 完成后（生成 books/my-book/typst/，不覆盖引擎样书）
 python3 tools/assemble_book.py books/my-book --engine ../techbook-typst --compile
 ```
 

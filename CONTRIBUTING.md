@@ -66,15 +66,16 @@ python3 writing-rules/tools/init_book.py my-book --title "书名" --claim "可�
 
 # 2) 写作：按 kit/stage_prompts.md 填 01–08，units/Cxx-Sy.spec.md 先于 .md
 
-# 3) 一条命令装配成可编译书稿（units → chapters/chN.typ → config.toml）
+# 3) 一条命令装配成书内可编译工程（units → books/my-book/typst/chapters/chN.typ）
 python3 writing-rules/tools/assemble_book.py books/my-book \
-  --engine techbook-typst --out techbook-typst/chapters --compile
+  --engine techbook-typst --compile
 
-# 变体：输出到书稿自己的 chapters/（薄项目），不改引擎 config
-python3 writing-rules/tools/assemble_book.py books/my-book
+# 兼容：只输出 chapters 到指定目录，不生成书内 typst/，也不自动 compile
+python3 writing-rules/tools/assemble_book.py books/my-book --out /tmp/my-book-chapters
 ```
 
-约定：第 N 章文件名固定为 `chapters/chN.typ`；无正文的章也会生成占位骨架，保证能编译。
+约定：第 N 章文件名固定为 `typst/chapters/chN.typ`；无正文的章也会生成占位骨架，保证能编译。
+默认不写 `techbook-typst/`；确需维护样书时加 `--allow-engine`。
 
 ## 测试
 

@@ -6,6 +6,8 @@
 
 ### Added
 - `tools/quality_gate.py`：质量优先硬门禁——P1 试点章未人签字不得进 P2、无人值守只能 draft、报告必须带 `文件:行号 + 原文引句 + reviewed_revision`、台账 schema、C# 片段缺括号/未标 illustrative、章末块/质量预算；接入 `validate_quality`（G8）
+- `techbook-typst/tools/md2typ.py`：图片→`#fig/#image`、链接→`#link`、引用→`#quote`、分隔线、`<!-- caption -->` 表注、`--asset-dir` 资源复制
+- `assemble_book.py`：默认生成书内 `books/<slug>/typst/`（main/config/src/chapters/assets/dist），`--compile` 在书内编译；拒绝写 `techbook-typst/`，除非 `--allow-engine`；保留 `--out` 兼容模式
 - 规则解析器修正：支持 1–6 字母域（`CLAIM` / `HUMOR` / `B` / `F` 不再漏表）；A 总表 145 条 / MUST 103 / SHOULD 42
 - `init_book --family/--target-words`：立项卡与 outline 同源，修复 B/C 混写；脚手架不再把 `03_单元spec.md` 当正文 lint
 - `templates/00_阶段状态.json` 增加 `human_in_loop`、`human_confirmations.pilot/final`、`pilot`；`init_book` 生成 `workflow/06_终审/`

@@ -2,11 +2,12 @@
 
 ```bash
 python3 writing-rules/tools/assemble_book.py books/<slug> \
-  --engine techbook-typst --out techbook-typst/chapters --compile
+  --engine techbook-typst --compile
 ```
 
-章节名 `chapters/chN.typ`。排版故障才开 `techbook-typst/AGENTS.md`。
-产物只在 `dist/`；勿把 PDF 提交进库。
+默认生成书内 `books/<slug>/typst/`（`main.typ`、`config.toml`、`src/`、`chapters/chN.typ`、`assets/`），
+产物在 `books/<slug>/typst/dist/book.pdf`；**不要写 `techbook-typst/chapters`**，那会覆盖样书。
+排版故障才开 `techbook-typst/AGENTS.md`。勿把 PDF 提交进库。
 
 ## 交付打包
 

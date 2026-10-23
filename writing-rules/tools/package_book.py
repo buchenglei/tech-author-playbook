@@ -170,7 +170,7 @@ def main() -> int:
     ap.add_argument("book_dir")
     ap.add_argument("--engine", default=str(ROOT / "techbook-typst"))
     ap.add_argument("--out", default="", help="输出 tar.gz 路径")
-    ap.add_argument("--pdf", default="", help="PDF 路径（默认 engine/dist/book.pdf）")
+    ap.add_argument("--pdf", default="", help="PDF 路径（默认书内 typst/dist/book.pdf，其次 engine/dist）")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--skip-quality", action="store_true",
                     help="跳过 validate_quality（交付说明须标 draft）")
@@ -198,8 +198,11 @@ def main() -> int:
             outline = json.loads(op.read_text(encoding="utf-8"))
         except Exception:
             pass
+    # 优先使用书内 typst/（assemble_book 默认产物）；否则回退引擎样书
+    book_typst = book / "typst"
+    typst_src = book_typst if (book_typst / "main.typ").is_file() else engine
     # config 摘要可作书籍介绍补充
-    cfgp = engine / "config.toml"
+    cfgp = typst_src / "config.toml"
     if cfgp.is_file() and not meta.get("abstract"):
         import re as _re
         m = _re.search(r'abstract\s*=\s*"([^"]*)"', cfgp.read_text(encoding="utf-8"))
@@ -211,7 +214,7 @@ def main() -> int:
     if meta.get("title") == slug and outline.get("book", {}).get("title"):
         meta["title"] = outline["book"]["title"]
 
-    pdf = Path(a.pdf).resolve() if a.pdf else (engine / "dist" / "book.pdf")
+    pdf = Path(a.pdf).resolve() if a.pdf else (typst_src / "dist" / "book.pdf")
     out = Path(a.out).resolve() if a.out else (ROOT / "dist" / f"{slug}-delivery.tar.gz")
 
     files: list[tuple[str, bytes]] = []
@@ -224,14 +227,13 @@ def main() -> int:
     if lic.is_file():
         add_bytes("LICENSE", lic.read_bytes())
 
-    # typst 工程
+    # typst 工程（优先书内；不含 dist 产物）
     n_typst = 0
-    if engine.is_dir():
-        for p in sorted(engine.rglob("*")):
-            if not p.is_file() or not want(p, engine):
+    if typst_src.is_dir():
+        for p in sorted(typst_src.rglob("*")):
+            if not p.is_file() or not want(p, typst_src):
                 continue
-            rel = p.relative_to(engine)
-            # 不要引擎里的 dist 产物（PDF 另放根）
+            rel = p.relative_to(typst_src)
             if rel.parts and rel.parts[0] == "dist":
                 continue
             add_bytes(f"typst/{rel.as_posix()}", p.read_bytes())
@@ -244,7 +246,7 @@ def main() -> int:
             continue
         rel = p.relative_to(book)
         top = rel.parts[0] if rel.parts else ""
-        if top in ("handoff", "workflow", "chapters"):
+        if top in ("handoff", "workflow", "chapters", "typst"):
             continue
         add_bytes(f"manuscript/{rel.as_posix()}", p.read_bytes())
         n_manu += 1

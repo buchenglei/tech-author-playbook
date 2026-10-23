@@ -194,6 +194,27 @@ def main() -> int:
         check("md2typ 转义表格 #", "\\#" in text or "[\\#]" in text or "header: ([\\#]" in text, text[:500])
         check("md2typ code 组件", "#code[code]" in text, text)
 
+        # 图 / 链接 / 引用 / 表注 / 资源复制
+        (td / "fig").mkdir()
+        (td / "fig" / "a.png").write_bytes(b"x")
+        src.write_text(
+            "# 图节\n\n![架构](fig/a.png)\n\n"
+            "[链接](https://typst.app)\n\n> 引用一行\n\n"
+            "| A | B |\n| --- | --- |\n| 1 | 2 |\n\n"
+            "<!-- caption: 对照表 -->\n",
+            encoding="utf-8",
+        )
+        out2 = td / "out" / "ch.typ"
+        asset = td / "out" / "assets"
+        r = run([sys.executable, str(MD2TYP), str(src), "--title", "章", "-o", str(out2),
+                 "--asset-dir", str(asset)])
+        text2 = out2.read_text(encoding="utf-8") if out2.is_file() else ""
+        check("md2typ 图片转 #fig", '#fig(image("assets/u/a.png"' in text2
+              and (asset / "u" / "a.png").is_file(), text2[:500] + r.stdout + r.stderr)
+        check("md2typ 链接转 #link", '#link("https://typst.app")[链接]' in text2, text2[:500])
+        check("md2typ 引用转 #quote", "#quote[" in text2 and "引用一行" in text2, text2[:500])
+        check("md2typ 表注取 caption", "caption: [对照表]" in text2, text2[:500])
+
     print("== sync_handoff ==")
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
@@ -295,6 +316,30 @@ def main() -> int:
               and (b / "chapters" / "preface.typ").is_file(), r.stdout + r.stderr)
         check("assemble 不乱写引擎 config", (b / "chapters" / "chapters.manifest").is_file()
               or "跳过 config" in r.stdout, r.stdout)
+
+        engine_cfg = ROOT / "techbook-typst" / "config.toml"
+        before = engine_cfg.read_bytes()
+        r = run([sys.executable, str(asm), str(b), "--engine", str(ROOT / "techbook-typst")])
+        check("assemble 默认生成书内 typst/", r.returncode == 0
+              and (b / "typst" / "main.typ").is_file()
+              and (b / "typst" / "config.toml").is_file()
+              and (b / "typst" / "src" / "book.typ").is_file()
+              and (b / "typst" / "chapters" / "ch1.typ").is_file(), r.stdout + r.stderr)
+        check("assemble 不覆盖引擎 config", engine_cfg.read_bytes() == before, r.stdout)
+
+        # package_book 优先打包书内 typst/
+        pkg = ROOT / "writing-rules" / "tools" / "package_book.py"
+        out_tar2 = td / "booktypst.tar.gz"
+        r = run([sys.executable, str(pkg), str(b), "--engine", str(ROOT / "techbook-typst"),
+                 "--out", str(out_tar2), "--skip-quality"])
+        names2 = []
+        if out_tar2.is_file():
+            import tarfile as tf2
+            with tf2.open(out_tar2, "r:gz") as tar:
+                names2 = tar.getnames()
+        check("package_book 优先书内 typst", any(x.endswith("typst/main.typ") for x in names2)
+              and not any(x.endswith("typst/chapters/ch1-intro.typ") for x in names2),
+              str(names2[:8]) + r.stdout[:200])
 
     print("== 门禁假绿与真源巡检 ==")
     # G4 未实现必须红，不得 PASS
