@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from wordcount import cjk_len  # noqa: E402  全仓库统一字数口径
 from quality_gate import run_checks as run_quality_gate  # noqa: E402  质量优先硬门禁
+from quality_gate import count_chars  # noqa: E402  合同字数口径
 
 
 def load_json(p: Path):
@@ -145,7 +146,8 @@ def main() -> int:
                     fail(f"{sid} frozen 但缺 units/{sid}.md", "UNIT-19")
                 continue
             text = p.read_text(encoding="utf-8", errors="ignore")
-            n = cjk_len(text)
+            metric = contract.get("word_count_metric") if contract else None
+            n = count_chars(text, metric or "cjk_len")
             need = max(abs_min, int(float(s.get("words") or 0) * ratio))
             if need and n < need:
                 thin.append((sid, n, need))

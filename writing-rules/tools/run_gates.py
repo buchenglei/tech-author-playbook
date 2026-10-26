@@ -19,9 +19,10 @@ LINT = ROOT / "writing-rules" / "tools" / "spec_lint.py"
 QUALITY = ROOT / "writing-rules" / "tools" / "validate_quality.py"
 
 
-def run_gate(which: str, base: Path) -> dict:
+def run_gate(which: str, base: Path, evidence_policy: str = "body-e-tags") -> dict:
     rr = subprocess.run(
-        [sys.executable, str(LINT), "--gate", which, str(base), "--json"],
+        [sys.executable, str(LINT), "--gate", which, str(base), "--json",
+         "--evidence-policy", evidence_policy],
         capture_output=True,
     )
     # 子进程输出是 UTF-8；text=True 在 GBK 机器上会解码崩溃（stdout 变 None）
@@ -49,13 +50,23 @@ def main() -> int:
     a = ap.parse_args()
     book = Path(a.book_dir).resolve()
     skip = {s.strip().upper() for s in a.skip.split(",") if s.strip()}
+    # 书稿合同声明的证据承载策略透传给 spec_lint（L-CLAIM-01 口径）
+    policy = "body-e-tags"
+    for cand in (book / "workflow" / "00_大纲合同.json",
+                 book / "manuscript" / "workflow" / "00_大纲合同.json"):
+        try:
+            policy = json.loads(cand.read_text(encoding="utf-8-sig")).get(
+                "evidence_policy") or policy
+            break
+        except Exception:
+            continue
     results = []
     worst = 0
     for g in ("G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7"):
         if g in skip:
             results.append({"gate": g, "ok": True, "skipped": True})
             continue
-        res = run_gate(g, book)
+        res = run_gate(g, book, evidence_policy=policy)
         results.append(res)
         if not res.get("ok"):
             worst = 2

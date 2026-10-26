@@ -550,6 +550,96 @@ def main() -> int:
         check("裸语句 foo.Bar; 必须红且带文件定位",
               bool(hit) and hit[0].get("file", "").endswith("C01-S1.md"), str(hit)[:300])
 
+    print("== 合同与衰减检测（F# 案例） ==")
+    with tempfile.TemporaryDirectory() as td:
+        b = Path(td) / "decay"
+        (b / "units").mkdir(parents=True)
+
+        def wu(stem, body, spec_eids=True):
+            (b / "units" / f"{stem}.md").write_text(body, encoding="utf-8")
+            (b / "units" / f"{stem}.spec.md").write_text(
+                "# spec\n\n## claims\n\n| 项 | 内容 |\n|---|---|\n"
+                + ("| 断言 | E-001 |\n" if spec_eids else "| 断言 | 无 |\n"),
+                encoding="utf-8")
+
+        for ch in range(1, 10):
+            thin = ch >= 7
+            for s in (1, 2):
+                if thin:
+                    wu(f"C{ch:02d}-S{s}", "# 节\n\n## 小节\n\n" + "注意" * 8 + "。\n", False)
+                else:
+                    wu(f"C{ch:02d}-S{s}", "# 节\n\n## 小节\n\n" + "这一节讲真实内容。" * 12 + "\n", True)
+        dec = quality_gate.check_decay(b, {})
+        check("批量衰减必须红（体量/证据）",
+              any(i["rule_id"] == "DECAY-01" and i["level"] == "P0" for i in dec)
+              and any(i["rule_id"] == "DECAY-03" for i in dec), str(dec)[:400])
+
+        # 合同交付物清单
+        contract = {"deliverables": ["typst/chapters/appendix-*.typ"], "figures_min": 1}
+        cd = quality_gate.check_contract_deliverables(b, contract)
+        check("交付物缺失必须红", any(i["rule_id"] == "CTR-01" for i in cd)
+              and any(i["rule_id"] == "CTR-02" for i in cd), str(cd)[:300])
+        (b / "typst" / "chapters").mkdir(parents=True)
+        (b / "typst" / "chapters" / "appendix-a.typ").write_text("#appendix[速查]\n", encoding="utf-8")
+        (b / "typst" / "chapters" / "ch1.typ").write_text("#fig(image(\"a.png\"))\n", encoding="utf-8")
+        cd = quality_gate.check_contract_deliverables(b, contract)
+        check("交付物齐备不报", not cd, str(cd)[:300])
+
+        # 章块检查：C01 有块、其余缺 → CTR-03；全书都缺 → CTR-04（命名不符）
+        p1 = b / "units" / "C01-S1.md"
+        p1.write_text(p1.read_text(encoding="utf-8") + "\n## 动手练习\n\n做一遍。\n", encoding="utf-8")
+        cb = quality_gate.check_chapter_blocks(b, {"chapter_blocks_required": ["动手练习"]})
+        check("缺合同骨架块必须报 CTR-03", any(i["rule_id"] == "CTR-03" for i in cb),
+              str(cb)[:300])
+        cb = quality_gate.check_chapter_blocks(b, {"chapter_blocks_required": ["动手练习"],
+                                                   "chapter_blocks_aliases": {"动手练习": ["做一遍"]}})
+        check("配别名后不再报 CTR-04", not any(i["rule_id"] == "CTR-04" for i in cb),
+              str(cb)[:300])
+        cb4 = quality_gate.check_chapter_blocks(b, {"chapter_blocks_required": ["七段"]})
+        check("全书零命中的块报 CTR-04", any(i["rule_id"] == "CTR-04" for i in cb4),
+              str(cb4)[:300])
+
+        # 证据策略
+        (b / "04_ledger.csv").write_text(
+            "id,claim,level,source_title,url,version,locator,cmd,exit_code,output_hash,date,unit\n"
+            "E-001,claim,E1,doc,local,1,x,,,,2026-01-01,实验\n", encoding="utf-8")
+        ev = quality_gate.check_evidence(b, {}, {"evidence_policy": "spec-mapping"})
+        check("台账 unit='实验' 与 url='local' 必须报",
+              any(i["rule_id"] == "EVD-14" for i in ev)
+              and any(i["rule_id"] == "EVD-15" for i in ev), str(ev)[:400])
+        check("spec-mapping 下正文无 E-xxx 不报 EVD-13",
+              not any(i["rule_id"] == "EVD-13" for i in ev), str(ev)[:300])
+        ev2 = quality_gate.check_evidence(b, {}, {})
+        check("默认 body-e-tags 报 EVD-13", any(i["rule_id"] == "EVD-13" for i in ev2),
+              str(ev2)[:300])
+
+        # notes_brief 单字符污染
+        st = {"notes_brief": ["6", "8", "C42 完成。"]}
+        nb = quality_gate.check_state_sanity(b, b, st)
+        check("notes_brief 单字符污染必须报", any(i["rule_id"] == "WF-23" for i in nb),
+              str(nb)[:300])
+
+    print("== spec_lint 证据策略 ==")
+    with tempfile.TemporaryDirectory() as td:
+        f = Path(td) / "claim.md"
+        f.write_text("# t\n\n实测结果显示体积下降 3.7%。\n", encoding="utf-8")
+
+        def claim_issue(policy):
+            rr = subprocess.run([sys.executable, str(LINT), str(f), "--profile", "manuscript",
+                                 "--json", "--evidence-policy", policy], capture_output=True)
+            d = json.loads(rr.stdout.decode("utf-8", errors="replace"))
+            return [i for i in d.get("P0", []) + d.get("P1", []) if i.get("rule_id") == "L-CLAIM-01"]
+
+        hit = claim_issue("body-e-tags")
+        check("body-e-tags 数字无 E-xxx 仍 P0", hit and hit[0]["level"] == "P0", str(hit)[:200])
+        hit = claim_issue("spec-mapping")
+        check("spec-mapping 降为 P1", hit and hit[0]["level"] == "P1", str(hit)[:200])
+        hit = claim_issue("visible-markers")
+        check("visible-markers 无标记仍 P0", hit and hit[0]["level"] == "P0", str(hit)[:200])
+        f.write_text("# t\n\n无法验证（未实测）：实测结果显示体积下降 3.7%。\n", encoding="utf-8")
+        hit = claim_issue("visible-markers")
+        check("visible-markers 有标记即合规", not hit, str(hit)[:200])
+
     print("== 金样板 smoke ==")
     if BOOK.is_dir():
         for g in ("G0", "G1", "G2", "G3", "G5", "G6"):

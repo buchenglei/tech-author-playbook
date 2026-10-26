@@ -533,9 +533,19 @@ NUM_UNIT_RE = re.compile(r"(?<![\d.])(\d{3,}|\d+\.\d+)\s*(ms|s|GB|MB|%|万|次|�
 EID_RE = re.compile(r"E-\d{3}")
 
 
-def check_claims(text, ledger_ids=None):
-    """manuscript：带单位的数字必须与 E-xxx 同句（CLAIM-01）。
-    不再「段内见 E- 即整段免检」；若提供 ledger_ids 则要求 E-xxx 真实存在。
+EVIDENCE_POLICIES = ("body-e-tags", "spec-mapping", "visible-markers")
+# 注意：不要放裸「实测」二字（「实测结果显示」会被误当标记）；标记须是可判定短语
+VISIBLE_MARKERS_RE = re.compile(r"已验证|待核实|无法验证|未实测|本机实测|官方文档|官方|推断")
+
+
+def check_claims(text, ledger_ids=None, evidence_policy="body-e-tags"):
+    """manuscript：带单位的数字必须与证据同句（CLAIM-01）。
+
+    口径由 `00_大纲合同.evidence_policy` 决定（人在融合评估里裁决）：
+      body-e-tags    基线：数字句必须带 E-xxx（P0）
+      spec-mapping   证据只进台账/spec claims；数字句缺 E-xxx 降 P1（仍建议可回溯）
+      visible-markers 正文用中文可见标记；数字句有「已验证/无法验证（未实测）/官方/推断…」即合规
+    引用了不存在的 E-xxx 一律 P0（与策略无关）。
     """
     out = []
     for start, buf, _sec in paragraphs(split_lines(text)):
@@ -549,8 +559,16 @@ def check_claims(text, ledger_ids=None):
                 continue
             eids = EID_RE.findall(sent)
             if not eids:
-                out.append({"rule_id": "L-CLAIM-01", "level": "P0", "line": start,
-                            "msg": f"数字「{nums[0].group(0)}」未关联台账 E-xxx"})
+                if evidence_policy == "spec-mapping":
+                    out.append({"rule_id": "L-CLAIM-01", "level": "P1", "line": start,
+                                "msg": f"policy=spec-mapping：数字「{nums[0].group(0)}」句内无 E-xxx（证据在台账，建议脚注/标记）"})
+                elif evidence_policy == "visible-markers":
+                    if not VISIBLE_MARKERS_RE.search(sent):
+                        out.append({"rule_id": "L-CLAIM-01", "level": "P0", "line": start,
+                                    "msg": f"policy=visible-markers：数字「{nums[0].group(0)}」句内无可见证据标记"})
+                else:
+                    out.append({"rule_id": "L-CLAIM-01", "level": "P0", "line": start,
+                                "msg": f"数字「{nums[0].group(0)}」未关联台账 E-xxx"})
                 continue
             if ledger_ids is not None:
                 known = [e for e in eids if e in ledger_ids]
@@ -652,7 +670,7 @@ def _valid_source_url(url):
     return u.startswith("repo:")
 
 
-def gate(which, base):
+def gate(which, base, evidence_policy="body-e-tags"):
     issues = []
 
     def need(name):
@@ -884,7 +902,8 @@ def gate(which, base):
         else:
             return [{"rule_id": which, "level": "P0", "msg": f"找不到 {base}"}]
         for t in targets:
-            issues.extend(run_checks(read(t), t, "manuscript", strict=False)[0])
+            issues.extend(run_checks(read(t), t, "manuscript", strict=False,
+                                     evidence_policy=evidence_policy)[0])
         if which in ("G5", "G7"):
             # 装配级：outline 与 units 对齐、术语表存在
             outline_p = None
@@ -940,7 +959,8 @@ def gate(which, base):
 # ---------------------------------------------------------------- 主流程
 
 
-def run_checks(text, path, profile, strict, with_registry=True, ref_text=""):
+def run_checks(text, path, profile, strict, with_registry=True, ref_text="",
+               evidence_policy="body-e-tags"):
     headings = set()
     for _, line, in_code, _ in split_lines(text):
         if in_code:
@@ -983,7 +1003,7 @@ def run_checks(text, path, profile, strict, with_registry=True, ref_text=""):
     p2 += check_symmetry(text)
     p2 += check_cite(text)
     if profile == "manuscript":
-        p0 += check_claims(text, ledger_ids=None)
+        p0 += check_claims(text, ledger_ids=None, evidence_policy=evidence_policy)
         unit_iss = check_unit_files(path)
         p0 += [i for i in unit_iss if i["level"] == "P0"]
         p1 += [i for i in unit_iss if i["level"] != "P0"]
@@ -1012,12 +1032,15 @@ def main():
     ap.add_argument("--registry", action="store_true")
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--gate", default="")
+    ap.add_argument("--evidence-policy", default="body-e-tags",
+                    choices=list(EVIDENCE_POLICIES),
+                    help="证据承载策略（默认 body-e-tags；书稿按 00_大纲合同.evidence_policy 声明）")
     ap.add_argument("--ref-spec", default="",
                     help="被引用规范的路径：其中的规则 ID 与章节号视为已知")
     a = ap.parse_args()
 
     if a.gate:
-        issues = gate(a.gate, a.file or ".")
+        issues = gate(a.gate, a.file or ".", evidence_policy=a.evidence_policy)
         p0 = [i for i in issues if i["level"] == "P0"]
         p1 = [i for i in issues if i["level"] != "P0"]
         if a.json:
@@ -1063,7 +1086,8 @@ def main():
         return 0
 
     ref_text = read(a.ref_spec) if a.ref_spec else ""
-    p0, p1, p2, rules = run_checks(text, a.file, a.profile, a.strict, ref_text=ref_text)
+    p0, p1, p2, rules = run_checks(text, a.file, a.profile, a.strict, ref_text=ref_text,
+                                   evidence_policy=a.evidence_policy)
     must = sum(1 for r in rules.values() if r["strength"] == "MUST")
 
     if a.json:

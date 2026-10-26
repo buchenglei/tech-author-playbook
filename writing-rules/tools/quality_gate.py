@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from wordcount import cjk_len  # noqa: E402
+from wordcount import cjk_len, chinese_len  # noqa: E402
 
 PLACEHOLDER = (
     "待改写", "待定", "TODO", "占位", "请改写", "示例假设",
@@ -58,6 +58,20 @@ def _issue(level: str, rule_id: str, msg: str, path: Path | None = None,
     if line:
         out["line"] = line
     return out
+
+
+def load_contract(wf: Path) -> dict:
+    """`00_大纲合同.json`（可选）。字段：
+    word_count_metric（cjk_len|chinese_len）、evidence_policy、deliverables（glob 列表）、
+    figures_min、chapter_blocks_required、chapter_blocks_aliases、decay_thresholds。
+    """
+    return load_json(wf / "00_大纲合同.json") or {}
+
+
+def count_chars(text: str, metric: str = "cjk_len") -> int:
+    if metric == "chinese_len":
+        return chinese_len(text)
+    return cjk_len(text)
 
 
 def load_json(path: Path):
@@ -335,8 +349,10 @@ def check_reports(root: Path, wf: Path) -> list[dict]:
     return issues
 
 
-def check_evidence(root: Path, outline: dict) -> list[dict]:
+def check_evidence(root: Path, outline: dict, contract: dict | None = None) -> list[dict]:
     issues: list[dict] = []
+    policy = (contract or {}).get("evidence_policy") or "body-e-tags"
+    spec_eids_total = 0
     ledger_p = root / "04_ledger.csv"
     ids: set[str] = set()
     if not ledger_p.is_file():
@@ -384,6 +400,28 @@ def check_evidence(root: Path, outline: dict) -> list[dict]:
                 if not any(x in blob for x in ("推断", "推测", "未实测")):
                     issues.append(_issue("P0", "EVD-08", f"{rid} 是 E3 但无推断标记",
                                          ledger_p, i))
+            # unit 必须能回指写作单元/章（F# 案例 51 行 unit='实验' 无法回溯）
+            unit = str(r.get("unit") or "").strip()
+            if unit and not re.match(r"^(C\d{1,3}(-S\d{1,2})?|A-?\d+|ch\d+)$", unit):
+                issues.append(_issue("P1", "EVD-14",
+                                     f"{rid} 的 unit={unit!r} 无法回指单元（应为 C01-S1 / C01 / A1）",
+                                     ledger_p, i))
+            # url 只接受 https:// 或 repo:（AGENTS §2），且不得泄漏本机路径。
+            # E0 证据自带 cmd/exit/hash 可复跑，url 只是辅助 → 非法降 P1；
+            # E1/E2 的 url 是来源真源 → P0；本机路径泄漏一律 P0。
+            url = str(r.get("url") or "").strip()
+            if url:
+                if re.match(r"^[A-Za-z]:[\\/]", url) or url.startswith("/") or "\\" in url:
+                    issues.append(_issue("P0", "EVD-15",
+                                         f"{rid} 的 url 是本机路径（泄漏且不可核）：{url[:60]}",
+                                         ledger_p, i))
+                elif not (url.startswith("https://") or url.startswith("repo:")):
+                    issues.append(_issue("P0" if level in ("E1", "E2") else "P1", "EVD-15",
+                                         f"{rid} 的 url 须 https:// 或 repo:（现为 {url[:40]}）",
+                                         ledger_p, i))
+            elif level in ("E1", "E2"):
+                issues.append(_issue("P0", "EVD-15", f"{rid} 是 {level} 但缺 url",
+                                     ledger_p, i))
 
     units = unit_files(root)
     missing_spec = []
@@ -395,6 +433,7 @@ def check_evidence(root: Path, outline: dict) -> list[dict]:
             continue
         stext = read(spec)
         spec_ids = set(re.findall(r"E-\d{3}", stext))
+        spec_eids_total += len(spec_ids)
         if not spec_ids:
             issues.append(_issue("P0", "EVD-09", f"{p.stem}.spec.md 没有任何 E-xxx", spec))
         unknown = spec_ids - ids
@@ -414,9 +453,31 @@ def check_evidence(root: Path, outline: dict) -> list[dict]:
                              f"{len(missing_spec)} 个单元缺 spec：{', '.join(missing_spec[:8])}",
                              root / "units"))
     if units and not body_eids:
-        issues.append(_issue("P1", "EVD-13",
-                             "全书正文没有 E-xxx；若采用「章末证据表/脚注」，请显式提供映射，否则读者无法复核数字",
-                             root / "units"))
+        # 证据承载策略由 00_大纲合同.evidence_policy 声明、人在融合评估里裁决：
+        #   body-e-tags   基线：正文 E-xxx 同句（CLAIM-01 口径）
+        #   spec-mapping  证据只进台账，正文/段落经 spec claims 映射
+        #   visible-markers 正文用中文可见标记（【已验证】/「无法验证（未实测）」）
+        if policy == "body-e-tags":
+            issues.append(_issue("P1", "EVD-13",
+                                 "全书正文没有 E-xxx；若采用「章末证据表/脚注」，请显式提供映射，否则读者无法复核数字",
+                                 root / "units"))
+        elif policy == "spec-mapping":
+            if not spec_eids_total:
+                issues.append(_issue("P1", "EVD-13",
+                                     "policy=spec-mapping：正文无 E-xxx，spec claims 也无 E-id，证据无任何映射",
+                                     root / "units"))
+        elif policy == "visible-markers":
+            markers = (contract or {}).get("evidence_markers") or \
+                ["无法验证（未实测）", "本机实测", "官方", "推断", "未实测"]
+            blob = "".join(read(p) for p in units)
+            if not any(m in blob for m in markers):
+                issues.append(_issue("P1", "EVD-13",
+                                     f"policy=visible-markers：正文未见任何可见证据标记 {markers[:3]}",
+                                     root / "units"))
+        else:
+            issues.append(_issue("P0", "EVD-16",
+                                 f"evidence_policy 非法：{policy!r}（可选 body-e-tags|spec-mapping|visible-markers）",
+                                 root / "units"))
     return issues
 
 
@@ -500,8 +561,9 @@ def check_code_project(root: Path) -> list[dict]:
     return []
 
 
-def check_structure(root: Path, outline: dict) -> list[dict]:
+def check_structure(root: Path, outline: dict, contract: dict | None = None) -> list[dict]:
     issues: list[dict] = []
+    metric = (contract or {}).get("word_count_metric") or "cjk_len"
     units = unit_files(root)
     seen: dict[str, str] = {}
     for p in units:
@@ -529,14 +591,169 @@ def check_structure(root: Path, outline: dict) -> list[dict]:
         if miss:
             issues.append(_issue("P1", "QG-03",
                                  f"{p.stem} 作为章末节缺：{', '.join(miss)}", p))
+        # 章末四件事必须行文承载；以「## 本章标尺/## 小结」这类挂牌标题顶数不算
+        for w in CHAPTER_BLOCK_WORDS:
+            if re.search(rf"^#{{2,4}}\s*{re.escape(w)}\s*[:：]?\s*$", text, re.M):
+                issues.append(_issue("P0", "QG-05",
+                                     f"{p.stem} 把章末四件事写成挂牌标题「## {w}」（须改为行文）",
+                                     p))
+                break
     words = {s.get("id"): int(s.get("words") or 0)
              for ch in (outline.get("chapters") or []) for s in (ch.get("sections") or [])}
     for p in units:
         budget = words.get(p.stem, 0)
-        if budget and cjk_len(read(p)) < int(budget * 0.8):
-            issues.append(_issue("P1", "QG-04",
-                                 f"{p.stem} 仅 {cjk_len(read(p))} 字，低于质量预算 0.8×{budget}",
-                                 p))
+        if budget:
+            n = count_chars(read(p), metric)
+            if n < int(budget * 0.8):
+                issues.append(_issue("P1", "QG-04",
+                                     f"{p.stem} 仅 {n} 字（口径 {metric}），低于质量预算 0.8×{budget}",
+                                     p))
+    return issues
+
+
+def check_contract_deliverables(root: Path, contract: dict | None = None) -> list[dict]:
+    """合同交付物清单：`deliverables`（glob 列表）与 `figures_min`。
+    F# 案例：合同承诺 48 章 + 附录 A–J，交付只有一份 80 字节占位——缺项必须红。
+    """
+    issues: list[dict] = []
+    for g in (contract or {}).get("deliverables") or []:
+        if not list(root.glob(str(g))):
+            issues.append(_issue("P0", "CTR-01", f"合同交付物缺失：{g}", root))
+    figs_min = (contract or {}).get("figures_min")
+    if figs_min:
+        n = 0
+        for d in ("typst/chapters", "typst", "chapters"):
+            p = root / d
+            if p.is_dir():
+                n = sum(read(f).count("#fig(") for f in p.glob("*.typ"))
+                break
+        if n < int(figs_min):
+            issues.append(_issue("P0", "CTR-02", f"图数量 {n} 低于合同下限 {figs_min}", root))
+    return issues
+
+
+def check_chapter_blocks(root: Path, contract: dict | None = None) -> list[dict]:
+    """合同骨架块（`chapter_blocks_required`）按章核查；
+    `chapter_blocks_aliases` 允许融合后的别名（如「来源对照 → 验证清单」）。"""
+    req = (contract or {}).get("chapter_blocks_required") or []
+    if not req:
+        return []
+    aliases = (contract or {}).get("chapter_blocks_aliases") or {}
+    issues: list[dict] = []
+    bych: dict[str, list[Path]] = {}
+    for p in unit_files(root):
+        m = re.match(r"^(C\d{1,3})", p.stem)
+        bych.setdefault(m.group(1) if m else "_", []).append(p)
+    hit: dict[str, int] = {str(b): 0 for b in req}
+    missing: list[tuple[str, str]] = []
+    for ch in sorted(bych):
+        if ch == "_":
+            continue
+        blob = "\n".join(read(p) for p in bych[ch])
+        heads = "\n".join(re.findall(r"^#{2,4}\s*(.+?)\s*$", blob, re.M))
+        for b in req:
+            alts = [str(b)] + [str(x) for x in (aliases.get(b) or [])]
+            if any(a in heads or a in blob for a in alts):
+                hit[str(b)] += 1
+            else:
+                missing.append((ch, str(b)))
+    # 全书无命中 = 命名与融合方案不一致（配置 chapter_blocks_aliases），单点报告；
+    # 有命中但个别章缺 = 真缺块，逐章报告（封顶，防刷屏）
+    for b, n in hit.items():
+        if n == 0:
+            issues.append(_issue("P1", "CTR-04",
+                                 f"合同骨架块「{b}」全书零命中（疑与融合后命名不符；配置 chapter_blocks_aliases）",
+                                 root))
+    real_missing = [(c, b) for c, b in missing if hit.get(b, 0) > 0]
+    for ch, b in real_missing[:20]:
+        issues.append(_issue("P1", "CTR-03",
+                             f"{ch} 缺合同骨架块「{b}」（该块在其他章存在，属本章漏写）",
+                             bych[ch][0]))
+    if len(real_missing) > 20:
+        issues.append(_issue("P1", "CTR-03",
+                             f"其余 {len(real_missing) - 20} 处骨架块缺失已省略", root))
+    return issues
+
+
+def check_decay(root: Path, contract: dict | None = None) -> list[dict]:
+    """批量衰减检测：按章聚合体量/纪律/spec 完整度，首 ⅓ 与末 ⅓ 对比。
+    质量优先要求「尾章不得加速」——量产到后半程的松劲必须被工具抓住（F# 案例
+    C18 起挂牌、C27 起无练习、C42 起 spec 塌缩全部漏检）。
+    """
+    issues: list[dict] = []
+    try:
+        from spec_lint import WORD2CAT, LABEL_HEAD_RE  # 同目录复用同一真源
+    except Exception:
+        return issues
+    metric = (contract or {}).get("word_count_metric") or "cjk_len"
+    th = (contract or {}).get("decay_thresholds") or {}
+    drop_ratio = float(th.get("length_drop_ratio", 0.55))
+    defect_growth = float(th.get("defect_growth", 2.0))
+    cov_drop = float(th.get("spec_cov_drop", 0.3))
+    bych: dict[str, list[Path]] = {}
+    for p in unit_files(root):
+        m = re.match(r"^(C\d{1,3})", p.stem)
+        if m:
+            bych.setdefault(m.group(1), []).append(p)
+    chs = sorted(bych, key=lambda x: int(x[1:]))
+    if len(chs) < 6:
+        return issues
+    k = max(2, len(chs) // 3)
+    agg: list[tuple[str, float, float, float]] = []
+    for ch in chs:
+        lens, defects, cov = [], 0, 0
+        for p in bych[ch]:
+            t = read(p)
+            lens.append(count_chars(t, metric))
+            defects += sum(t.count(w) for w in WORD2CAT)
+            defects += len(LABEL_HEAD_RE.findall(t))
+            sp = p.with_name(p.stem + ".spec.md")
+            if sp.is_file() and re.search(r"E-\d{3}", read(sp)):
+                cov += 1
+        agg.append((ch, sum(lens) / len(lens), defects / len(lens), cov / len(lens)))
+
+    def avg(idx: int, rows) -> float:
+        return sum(r[idx] for r in rows) / len(rows)
+
+    first_len, last_len = avg(1, agg[:k]), avg(1, agg[-k:])
+    if first_len > 0 and last_len < first_len * drop_ratio:
+        issues.append(_issue("P0", "DECAY-01",
+                             f"体量衰减：前 {k} 章均 {first_len:.0f} 字 → 末 {k} 章均 {last_len:.0f} 字"
+                             f"（<{drop_ratio:.0%}，口径 {metric}）", root))
+    elif first_len > 0 and last_len < first_len * min(0.75, drop_ratio + 0.2):
+        issues.append(_issue("P1", "DECAY-01",
+                             f"体量走低：前 {k} 章均 {first_len:.0f} 字 → 末 {k} 章均 {last_len:.0f} 字"
+                             f"（<{min(0.75, drop_ratio + 0.2):.0%}）", root))
+    first_def, last_def = avg(2, agg[:k]), avg(2, agg[-k:])
+    if last_def > first_def * defect_growth + 2:
+        issues.append(_issue("P0", "DECAY-02",
+                             f"纪律衰减：禁用词/挂牌前 {k} 章均 {first_def:.1f} → 末 {k} 章均 {last_def:.1f}",
+                             root))
+    elif last_def > first_def + 1:
+        issues.append(_issue("P1", "DECAY-02",
+                             f"纪律走低：禁用词/挂牌前 {k} 章均 {first_def:.1f} → 末 {k} 章均 {last_def:.1f}",
+                             root))
+    first_cov, last_cov = avg(3, agg[:k]), avg(3, agg[-k:])
+    if first_cov - last_cov > cov_drop:
+        issues.append(_issue("P0", "DECAY-03",
+                             f"证据衰减：spec 带 E-id 比例前 {k} 章 {first_cov:.0%} → 末 {k} 章 {last_cov:.0%}",
+                             root))
+    elif first_cov - last_cov > cov_drop * 0.5:
+        issues.append(_issue("P1", "DECAY-03",
+                             f"证据走低：spec 带 E-id 比例前 {k} 章 {first_cov:.0%} → 末 {k} 章 {last_cov:.0%}",
+                             root))
+    return issues
+
+
+def check_state_sanity(root: Path, wf: Path, state: dict) -> list[dict]:
+    """阶段状态 sanity：notes_brief 被逐字符污染是记忆脚本/append 误用的指纹。"""
+    issues: list[dict] = []
+    for i, nb in enumerate(state.get("notes_brief") or []):
+        if isinstance(nb, str) and 0 < len(nb.strip()) < 2:
+            issues.append(_issue("P1", "WF-23",
+                                 f"notes_brief[{i}] 是单字符 {nb!r}（疑似字符串被逐字符写入）",
+                                 wf / "00_阶段状态.json"))
+            break
     return issues
 
 
@@ -546,16 +763,21 @@ def run_checks(book: Path) -> tuple[list[dict], list[dict]]:
     wf = workflow_dir(book, root)
     outline = load_json(root / "02_outline.json") or {}
     state = load_json(root / "05_state.json") or {}
+    contract = load_contract(wf) if wf.is_dir() else {}
     issues: list[dict] = []
     if outline:
-        issues += check_structure(root, outline)
+        issues += check_structure(root, outline, contract)
     if wf.is_dir():
         issues += check_phase(root, wf, outline, state)
         issues += check_reports(root, wf)
+        issues += check_state_sanity(root, wf, state)
     if (root / "04_ledger.csv").is_file() or unit_files(root):
-        issues += check_evidence(root, outline)
+        issues += check_evidence(root, outline, contract)
     issues += check_code(root)
     issues += check_code_project(root)
+    issues += check_contract_deliverables(root, contract)
+    issues += check_chapter_blocks(root, contract)
+    issues += check_decay(root, contract)
     p0 = [i for i in issues if i["level"] == "P0"]
     p1 = [i for i in issues if i["level"] != "P0"]
     return p0, p1
