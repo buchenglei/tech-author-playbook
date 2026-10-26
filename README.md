@@ -19,7 +19,7 @@
 - `techbook-typst/` — Typst book engine (B5 layout, semantic components, `md2typ.py` assembly)
 - `books/how-to-write-a-tech-book/` — golden sample written through the full S0–S7 flow
 
-Quick checks: `python3 writing-rules/tools/tests/run_tests.py` · `cd techbook-typst && nu build.nu doctor && nu build.nu book`
+Quick checks: `python3 writing-rules/tools/tests/run_tests.py` · `python3 writing-rules/tools/run_gates.py books/<slug>` · `cd techbook-typst && nu build.nu doctor && nu build.nu book`
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md). Copyright CodeBu, MIT.
 
@@ -126,7 +126,7 @@ S0 立项 ──► S1 读者 ──► S2 大纲
             交接 / 出版  ◄────  dist/book.pdf + 校验清单
 ```
 
-流程示范书：`books/how-to-write-a-tech-book/`（**结构示范**；当前 G0–G3、G5–G7 通过，**G4 未实现、G8 未达合同下限**，不可当「写成这样就能交」的样例）→ `assemble_book.py` → 书内 `typst/chapters/chN.typ` → `typst/dist/book.pdf`。完整交付形态见 `writing-rules/workflow/templates/08_交付规范.md` 与 `docs/eval/` 中的真实书稿复盘。
+流程示范书：`books/how-to-write-a-tech-book/`（**结构示范**；当前 G0–G3、G5/G6 通过，**G4 默认 SKIP（未实现）、G8 未达合同下限，G7 依赖 G8 一并红**，不可当「写成这样就能交」的样例）→ `assemble_book.py` → 书内 `typst/chapters/chN.typ` → `typst/dist/book.pdf`。完整交付形态见 `writing-rules/workflow/templates/08_交付规范.md` 与 `docs/eval/` 中的真实书稿复盘。
 
 闭眼流水线：`init_book.py` 建工程 → 写 `units/` → `assemble_book.py --compile` 在 `books/<slug>/typst/` 出 PDF，不覆盖引擎样书。
 

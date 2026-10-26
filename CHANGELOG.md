@@ -5,6 +5,13 @@
 ## [Unreleased]
 
 ### Added
+- **批量衰减检测**（F# 案例驱动）：`quality_gate` DECAY-01/02/03 按章聚合体量/纪律/证据完整度，首 ⅓ vs 末 ⅓ 对比；阈值走 `00_大纲合同.decay_thresholds`
+- **合同增强**：`00_大纲合同.json` 新增 `word_count_metric`（字数口径钉死）、`evidence_policy`（body-e-tags|spec-mapping|visible-markers）、`evidence_markers`、`deliverables`、`figures_min`、`chapter_blocks_aliases`、`decay_thresholds`；CTR-01/02 交付物与图数量、CTR-03/04 合同骨架块按章核查
+- **台账校验收紧**：EVD-14 `unit` 必须回指单元/章；EVD-15 `url` 须 `https://` 或 `repo:`，本机路径泄漏 P0；EVD-13 按证据策略分支；WF-23 `notes_brief` 单字符污染
+- **门禁可复核**：RPT-11 报告写「P0=0/零命中」须带 `gate_check` 回执，与实测不符 P0；`run_gates --write-check` 生成 `handoff/04_check.json`；`workflow/revision_log.jsonl` 修订迁移链（登记后旧报告 RPT-09 降 P1 可追溯）
+- **交付契约**：`package_book` MANIFEST/README 带 `delivery_status`（final 人签字前 draft）；「终版/final/ready」命名护栏（`--force-name`）；README 书籍化要求与 `tools/` 自造工具回流写入 `08_交付规范`
+- `.github/workflows/ci.yml`：工具回归 + 规则总表同步 + 金样板硬门禁
+- `spec_lint --evidence-policy`：L-CLAIM-01 口径随 `00_大纲合同.evidence_policy` 三态切换
 - `tools/quality_gate.py`：质量优先硬门禁——P1 试点章未人签字不得进 P2、无人值守只能 draft、报告必须带 `文件:行号 + 原文引句 + reviewed_revision`、台账 schema、C# 片段缺括号/未标 illustrative、章末块/质量预算；接入 `validate_quality`（G8）
 - `techbook-typst/tools/md2typ.py`：图片→`#fig/#image`、链接→`#link`、引用→`#quote`、分隔线、`<!-- caption -->` 表注、`--asset-dir` 资源复制
 - `assemble_book.py`：默认生成书内 `books/<slug>/typst/`（main/config/src/chapters/assets/dist），`--compile` 在书内编译；拒绝写 `techbook-typst/`，除非 `--allow-engine`；保留 `--out` 兼容模式
@@ -18,7 +25,9 @@
 - 人工确认不可默示：拒绝「视为默示确认」；人设未确认 / pending_human 未清记 P1
 
 ### Fixed
-- **G4 未实现不得假绿**：报 P0「未实现的门禁」，`run_gates` 显示 FAIL 而非 PASS
+- **工具误报与崩溃（F# 案例实证）**：`spec_lint --json` 非 GBK 字符崩溃（固定 UTF-8）；LANG-05 把 `<!-- src -->` 注释行/英文引文/双反引号当正文计句长（剥离+纯西文不计）；L-FORM-01 漏「去冒号挂牌」（`## 机制`/`## 小结`/`## 本章标尺`）；CODE-03 误报 `var x = a.B;` 属性读取（只报裸语句）；`run_gates`/`run_tests` 子进程输出按 UTF-8 解码；QG-03 关键词可被挂牌标题顶数（新增 QG-05 要求行文承载）
+- **门禁单调性**：`run_gates` G4 未实现默认 SKIP（`--require-g4` 强制），不再永久 HAS_FAIL；G8 未过时 G7 强制 FAIL（禁止「G7 PASS + G8 FAIL」）
+- **G4 未实现不得假绿**：`spec_lint --gate G4` 仍报 P0「未实现的门禁」（默认 `run_gates` 标 SKIP）
 - **G0 拒占位**：立项卡来源/claim 含「待改写/TODO」时 G0 红
 - **check_claims 收紧**：不再「段内见 E- 即整段免检」，改为逐句核对
 - **L-VOL-01 落地**：`validate_quality` 以 `rule_id=L-VOL-01` 产出体量锁；其余悬空「脚本 X」降为「自检」或改指真实 ID

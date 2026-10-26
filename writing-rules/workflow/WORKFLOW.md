@@ -33,8 +33,12 @@
 5. **报告必须可核。** 读者/编辑报告至少 3 条 `文件.md:行号` + 原文引句；引句必须在当前稿命中。4 行报告不再能过 TEAM-04。
 6. **证据与代码必须可验。** 台账 schema 合法；spec claims 能回到 E-id；C# 片段通过明显语法/缺括号检查，或显式标 `illustrative`；书稿带 `code/` 时 `quality_gate` 会跑真实 `dotnet build`。PDF 编译 0 error 不等于代码正确。
 7. **合同变更人拍板。** 页数/字数/节下限的变更必须由人确认；Agent 只能提交《篇幅偏差裁定》，不能自己把合同改到刚好够。
+8. **口径必须在合同钉死（P1 阶段）。** `00_大纲合同.json` 的 `word_count_metric`（字数口径）与 `evidence_policy`（证据承载策略：`body-e-tags` / `spec-mapping` / `visible-markers`）必须写明并经人确认；不钉死会出现同一稿子两种薄厚结论、以及「正文带 E-xxx」与「证据只进台账」互相打架（真实书稿实证）。
+9. **尾章不得加速。** `quality_gate` 的 DECAY-01/02/03 按章聚合体量/纪律/证据完整度，对比首 ⅓ 与末 ⅓；量产后半程松劲（骤薄、挂牌回潮、spec 塌缩）是 P0，不是自觉问题。
+10. **门禁结论可复核。** 报告写「P0=0/零命中」必须带 `<!-- gate_check: … -->` 回执或引用 `handoff/04_check.json`（`run_gates --write-check` 生成）；与实测不符按 RPT-11 打 P0。合法的后期修订（标识清理、温度修订）在 `workflow/revision_log.jsonl` 登记迁移链，旧报告才可追溯。
+11. **交付状态与命名。** `human_confirmations.final` 未签字前交付一律 `draft`（MANIFEST/README 均标注）；「终版/final/ready」命名被 `package_book` 护栏拒绝（`--force-name` 显式承担）。禁止把仓库 README 误当书籍 README 交付。
 
-硬门禁由 `writing-rules/tools/quality_gate.py` 执行，并接入 `validate_quality.py`（G8）。没有 rule 的新检查用 `WF-*` / `RPT-*` / `EVD-*` / `CODE-*` / `QG-*` 前缀，不冒充规范规则。
+硬门禁由 `writing-rules/tools/quality_gate.py` 执行，并接入 `validate_quality.py`（G8）。没有 rule 的新检查用 `WF-*` / `RPT-*` / `EVD-*` / `CODE-*` / `QG-*` / `DECAY-*` / `CTR-*` 前缀，不冒充规范规则。
 
 ---
 
