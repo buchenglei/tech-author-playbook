@@ -20,20 +20,28 @@ QUALITY = ROOT / "writing-rules" / "tools" / "validate_quality.py"
 
 
 def run_gate(which: str, base: Path) -> dict:
-    r = subprocess.run(
+    rr = subprocess.run(
         [sys.executable, str(LINT), "--gate", which, str(base), "--json"],
-        capture_output=True, text=True,
+        capture_output=True,
     )
+    # 子进程输出是 UTF-8；text=True 在 GBK 机器上会解码崩溃（stdout 变 None）
+    out = rr.stdout.decode("utf-8", errors="replace") if rr.stdout else ""
+    err = rr.stderr.decode("utf-8", errors="replace") if rr.stderr else ""
     try:
-        data = json.loads(r.stdout)
+        data = json.loads(out)
     except Exception:
-        return {"gate": which, "ok": False, "issues": [{"msg": (r.stdout + r.stderr)[:200]}]}
+        return {"gate": which, "ok": False, "issues": [{"msg": (out + err)[:200]}]}
     p0, p1 = data.get("P0") or [], data.get("P1") or []
     return {"gate": which, "ok": not p0, "P0": len(p0), "P1": len(p1),
             "issues": (p0 + p1)[:5]}
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("book_dir")
     ap.add_argument("--json", action="store_true")
@@ -53,14 +61,16 @@ def main() -> int:
             worst = 2
     # G8 质量/体量/流程真实性
     if "G8" not in skip:
-        r = subprocess.run(
+        rr = subprocess.run(
             [sys.executable, str(QUALITY), str(book), "--json"],
-            capture_output=True, text=True,
+            capture_output=True,
         )
+        out = rr.stdout.decode("utf-8", errors="replace") if rr.stdout else ""
+        err = rr.stderr.decode("utf-8", errors="replace") if rr.stderr else ""
         try:
-            q = json.loads(r.stdout)
+            q = json.loads(out)
         except Exception:
-            q = {"P0": [{"msg": (r.stdout + r.stderr)[:200]}], "P1": []}
+            q = {"P0": [{"msg": (out + err)[:200]}], "P1": []}
         p0, p1 = q.get("P0") or [], q.get("P1") or []
         res = {"gate": "G8", "ok": not p0, "P0": len(p0), "P1": len(p1),
                "issues": (p0 + p1)[:6]}

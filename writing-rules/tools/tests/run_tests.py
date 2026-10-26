@@ -37,8 +37,17 @@ def check(name: str, cond: bool, detail: str = "") -> None:
         print(f"FAIL  {name}  {detail}")
 
 
+class Result:
+    """subprocess 结果的轻量包装：统一按 UTF-8 解码，避免 GBK 控制台误伤。"""
+
+    def __init__(self, rr):
+        self.returncode = rr.returncode
+        self.stdout = rr.stdout.decode("utf-8", errors="replace") if rr.stdout else ""
+        self.stderr = rr.stderr.decode("utf-8", errors="replace") if rr.stderr else ""
+
+
 def run(cmd, cwd=None):
-    return subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
+    return Result(subprocess.run(cmd, capture_output=True, cwd=cwd))
 
 
 def lint_json(path: Path, profile="manuscript"):
@@ -55,6 +64,11 @@ def gate(which: str, base: Path):
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     print("== spec_lint 回归 ==")
 
     with tempfile.TemporaryDirectory() as td:
@@ -442,14 +456,14 @@ def main() -> int:
         (b / "units" / "C01-S1.spec.md").write_text(
             "# spec\n\n## 6. claims\n\n| A1 | x | E0 | cmd | E-001 |\n", encoding="utf-8")
         (b / "units" / "C01-S1.md").write_text(
-            "# 节\n\n## 小节\n\n```csharp\nvar x = foo.Bar;\n```\n", encoding="utf-8")
+            "# 节\n\n## 小节\n\n```csharp\nfoo.Bar;\n```\n", encoding="utf-8")
 
         p0, _ = quality_gate.run_checks(b)
         check("quality_gate 捕获缺调用括号", any(i["rule_id"] == "CODE-03" for i in p0),
               str(p0)[:300])
 
         (b / "units" / "C01-S1.md").write_text(
-            "# 节\n\n## 小节\n\n<!-- illustrative -->\n\n```csharp\nvar x = foo.Bar;\n```\n",
+            "# 节\n\n## 小节\n\n<!-- illustrative -->\n\n```csharp\nfoo.Bar;\n```\n",
             encoding="utf-8")
         p0, _ = quality_gate.run_checks(b)
         check("illustrative 代码可豁免", not any(i["rule_id"] == "CODE-03" for i in p0),
@@ -478,6 +492,63 @@ def main() -> int:
         ev = quality_gate.check_evidence(b, outline)
         check("坏 CSV 台账必须红", any(i["rule_id"] in ("EVD-02", "EVD-04") for i in ev),
               str(ev)[:300])
+
+    print("== 工具误报与崩溃回归（F# 案例） ==（raw 读取，避免 GBK 解码误伤）")
+
+    def run_json(args):
+        rr = subprocess.run(args, capture_output=True)
+        raw = rr.stdout.decode("utf-8", errors="replace")
+        try:
+            return rr.returncode, json.loads(raw), raw, rr.stderr.decode("utf-8", errors="replace")
+        except Exception:
+            return rr.returncode, None, raw, rr.stderr.decode("utf-8", errors="replace")
+
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        f = td / "unicode.md"
+        f.write_text("# t\n\n雪人符号 \u2603 与制表符\t测试。\n", encoding="utf-8")
+        rc, d, raw, err = run_json([sys.executable, str(LINT), str(f),
+                                    "--profile", "manuscript", "--json"])
+        check("spec_lint --json 不因非常用字符崩溃",
+              rc in (0, 1, 2) and d is not None, raw[:200] + err[:200])
+
+        f2 = td / "noise.md"
+        f2.write_text(
+            "# t\n\n"
+            "<!-- src: fsharp-book-examples/src/Ch01/HelloCs/Program.cs:1-1 -->\n\n"
+            "> This is an intentionally very long English quotation line that should "
+            "never be counted as a Chinese sentence at all.\n\n"
+            "短句。\n",
+            encoding="utf-8")
+        rc, d2, raw, _ = run_json([sys.executable, str(LINT), str(f2),
+                                   "--profile", "manuscript", "--json"])
+        check("注释行/西文引文不报 LANG-05",
+              d2 is not None and not any(i.get("rule_id") == "LANG-05" for i in d2.get("P1", [])),
+              raw[:400])
+
+        f3 = td / "label2.md"
+        f3.write_text("# t\n\n## 机制\n\n正文一句。\n\n## 小结\n\n又一句。\n\n"
+                      "## 小结与官方锚点\n\n人话标题不该命中。\n", encoding="utf-8")
+        rc, d3, raw, _ = run_json([sys.executable, str(LINT), str(f3),
+                                   "--profile", "manuscript", "--json"])
+        labels = [i for i in (d3 or {}).get("P0", []) if i.get("rule_id") == "L-FORM-01"]
+        check("去冒号挂牌（## 机制/## 小结）必须红", len(labels) == 2, str(labels)[:300])
+
+    print("== quality_gate 代码误报回归 ==")
+    with tempfile.TemporaryDirectory() as td:
+        b = Path(td) / "cb"
+        (b / "units").mkdir(parents=True)
+        (b / "units" / "C01-S1.md").write_text(
+            "# 节\n\n## 小节\n\n```csharp\nvar text = Text.Corpus;\n```\n", encoding="utf-8")
+        p0, _ = quality_gate.run_checks(b)
+        check("属性读取赋值不报 CODE-03",
+              not any(i["rule_id"] == "CODE-03" for i in p0), str(p0)[:300])
+        (b / "units" / "C01-S1.md").write_text(
+            "# 节\n\n## 小节\n\n```csharp\nfoo.Bar;\n```\n", encoding="utf-8")
+        p0, _ = quality_gate.run_checks(b)
+        hit = [i for i in p0 if i["rule_id"] == "CODE-03"]
+        check("裸语句 foo.Bar; 必须红且带文件定位",
+              bool(hit) and hit[0].get("file", "").endswith("C01-S1.md"), str(hit)[:300])
 
     print("== 金样板 smoke ==")
     if BOOK.is_dir():

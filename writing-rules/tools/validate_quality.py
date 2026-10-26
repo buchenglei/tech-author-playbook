@@ -80,6 +80,11 @@ def find_report(wf: Path, prefix: str) -> Path | None:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("book_dir")
     ap.add_argument("--json", action="store_true")

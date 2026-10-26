@@ -110,11 +110,29 @@ def split_lines(text):
 
 
 def sentences(text):
-    """中文句子切分，去 markdown 标记。"""
-    t = re.sub(r"`[^`]*`", "X", text)
+    """中文句子切分，去 markdown 标记。
+
+    口径修正（F# 案例回归）：
+      - HTML 注释（`<!-- src: ... -->` 之类）不参与句长/句数；
+      - 双反引号 ``...`..`` 整体先折叠，再折单反引号；
+      - 行内代码折算为单字符；
+      - 纯西文/数字片段（无汉字）不算中文句子，避免英文引文误报 LANG-05/11/12。
+    """
+    t = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    t = re.sub(r"``.*?``", "X", t, flags=re.S)
+    t = re.sub(r"`[^`]*`", "X", t)
     t = re.sub(r"\[[^\]]*\]\([^)]*\)", "", t)
     t = re.sub(r"[*_#>]", "", t)
-    return [p.strip() for p in re.split(r"[。！？；]", t) if chinese_len(p) >= 4]
+    out = []
+    for p in re.split(r"[。！？；]", t):
+        p = p.strip()
+        if chinese_len(p) < 4:
+            continue
+        # 纯西文/数字片段不是中文句子
+        if len(re.findall(r"[\u4e00-\u9fff]", p)) < 2:
+            continue
+        out.append(p)
+    return out
 
 
 def paragraphs(lines):
@@ -463,8 +481,11 @@ def check_symmetry(text):
 
 
 # 手册腔：认知链挂牌标题（UNIT-21 / LANG-19）
+# 含「去冒号」变体：`## 小结`、`## 本章标尺`、`## 落地`、`## 避坑` 这类
+# 裸词标题同样是表单腔（F# 案例 C42-S3 实证）。带后缀的人话标题
+# （如「小结与官方锚点」「落地三步走」「会踩的坑」）不命中。
 LABEL_HEAD_RE = re.compile(
-    r"^#{2,4}\s*(现象|机制|证据|代价|误区|收束|小结)\s*[:：]"
+    r"^#{2,4}\s*(现象|机制|证据|代价|误区|收束|小结|本章标尺|落地|避坑)\s*(?:[:：]\s*\S|\s*$)"
 )
 # 附录/规范自身豁免
 FORM_EXEMPT_SECTION = ("附录", "禁用词", "句法病灶", "文风样例", "规则总表", "速查", "模板索引",
@@ -977,6 +998,12 @@ def run_checks(text, path, profile, strict, with_registry=True, ref_text=""):
 
 
 def main():
+    # GBK 控制台下 print(json) 会因非常用字符崩溃（C16-S1/C26-S4 实证）；固定 UTF-8。
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     ap = argparse.ArgumentParser()
     ap.add_argument("file", nargs="?", default="")
     ap.add_argument("--profile", default="spec", choices=["spec", "manuscript"])

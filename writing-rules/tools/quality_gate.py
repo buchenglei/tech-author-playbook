@@ -41,9 +41,9 @@ QUOTE_RE = re.compile(r"「([^」]{4,160})」|“([^”]{4,160})”|\"([^\"]{4,1
 REV_RE = re.compile(r"<!--\s*reviewed_revision:\s*([0-9a-fA-F]{8,64})\s*-->")
 CODE_LANGS = {"csharp", "cs", "c#"}
 CHAPTER_BLOCK_WORDS = ("本章标尺", "落地", "避坑", "小结")
-SMELL_STATEMENT = re.compile(
-    r"^\s*(?:var\s+[A-Za-z_]\w*\s*=\s*)?[A-Za-z_][\w.]*\s*;\s*$"
-)
+# 裸语句 `foo.Bar;` 在 C# 方法体内不合法；但 `var x = foo.Bar;`（属性读取赋值）
+# 是合法写法，不得误报（F# 案例 `var text = Text.Corpus;`）。
+SMELL_STATEMENT = re.compile(r"^\s*[A-Za-z_][\w.]*\s*;\s*$")
 KEYWORD_STATEMENTS = {
     "return", "break", "continue", "throw", "yield", "await", "goto",
     "this", "base", "null", "true", "false", "default",
@@ -424,27 +424,28 @@ def _strip_strings(line: str) -> str:
     return re.sub(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', '""', line)
 
 
-def _code_block_issues(block: list[str], start: int) -> list[dict]:
+def _code_block_issues(block: list[str], start: int,
+                       path: Path | None = None) -> list[dict]:
     issues: list[dict] = []
     clean = "\n".join(_strip_strings(x) for x in block)
     for op, cl in (("{", "}"), ("(", ")"), ("[", "]")):
         if clean.count(op) != clean.count(cl):
-            issues.append(_issue("P1", "CODE-01", f"代码块括号不平衡：{op}{cl}", None, start))
+            issues.append(_issue("P1", "CODE-01", f"代码块括号不平衡：{op}{cl}", path, start))
             break
     for j, raw in enumerate(block, start):
         s = raw.strip()
         if not s or s.startswith("//") or s.startswith("#"):
             continue
         if re.search(r"\(\s*=>", s):
-            issues.append(_issue("P0", "CODE-02", "lambda 缺形参（形如 `( => ...`）", None, j))
+            issues.append(_issue("P0", "CODE-02", "lambda 缺形参（形如 `( => ...`）", path, j))
         if SMELL_STATEMENT.match(s):
             head = s.split(";")[0].strip()
             word = re.split(r"[.\s]", head)[0]
             if word not in KEYWORD_STATEMENTS and not head.startswith(("using ", "return ", "throw ")):
                 issues.append(_issue("P0", "CODE-03",
-                                     f"语句像属性访问、缺调用括号：{s[:60]}", None, j))
+                                     f"裸语句缺调用括号（形如 `foo.Bar;`）：{s[:60]}", path, j))
         if re.search(r"\bnew\s+[A-Z]\w*\s*$", s):
-            issues.append(_issue("P0", "CODE-04", f"new 缺构造括号：{s[:60]}", None, j))
+            issues.append(_issue("P0", "CODE-04", f"new 缺构造括号：{s[:60]}", path, j))
     return issues
 
 
@@ -472,7 +473,7 @@ def check_code(root: Path) -> list[dict]:
                 else:
                     in_code = False
                     if lang in CODE_LANGS and not illustrative:
-                        issues.extend(_code_block_issues(block, start))
+                        issues.extend(_code_block_issues(block, start, p))
                 continue
             if in_code:
                 block.append(line)
@@ -561,6 +562,11 @@ def run_checks(book: Path) -> tuple[list[dict], list[dict]]:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("book_dir")
     ap.add_argument("--json", action="store_true")
