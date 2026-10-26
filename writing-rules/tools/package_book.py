@@ -24,7 +24,6 @@ import io
 import json
 import os
 import re
-import re
 import subprocess
 import sys
 import tarfile
@@ -214,11 +213,11 @@ def main() -> int:
     # config 摘要可作书籍介绍补充
     cfgp = typst_src / "config.toml"
     if cfgp.is_file() and not meta.get("abstract"):
-        import re as _re
-        m = _re.search(r'abstract\s*=\s*"([^"]*)"', cfgp.read_text(encoding="utf-8"))
+        cfg_text = cfgp.read_text(encoding="utf-8")
+        m = re.search(r'abstract\s*=\s*"([^"]*)"', cfg_text)
         if m:
             meta["abstract"] = m.group(1)
-        m2 = _re.search(r'subtitle\s*=\s*"([^"]*)"', cfgp.read_text(encoding="utf-8"))
+        m2 = re.search(r'subtitle\s*=\s*"([^"]*)"', cfg_text)
         if m2:
             meta["subtitle"] = m2.group(1)
     if meta.get("title") == slug and outline.get("book", {}).get("title"):

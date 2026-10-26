@@ -2,13 +2,20 @@
 # -*- coding: utf-8 -*-
 """run_gates.py — 一次跑完 G0–G8（G8 含 quality_gate），只打印紧凑结果（省 Token）。
 
+门禁语义：
+  - G4（A/B/C 条件实验证据）未实现：默认 SKIP 并注明；--require-g4 强制执行。
+  - 门禁单调：G8 有 P0 时 G7 强制 FAIL（禁止「G7 PASS + G8 FAIL」）。
+  - --write-check 把本次回执写 handoff/04_check.json（报告写门禁结论时须引用）。
+
 用法：
   python3 run_gates.py books/my-book
   python3 run_gates.py books/my-book --json
+  python3 run_gates.py books/my-book --write-check
 """
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import subprocess
 import sys
@@ -109,7 +116,7 @@ def main() -> int:
         rec = {
             "generated_by": "writing-rules/tools/run_gates.py",
             "command": f"run_gates.py {book}" + (" --require-g4" if a.require_g4 else ""),
-            "checked_at": __import__("datetime").datetime.now().astimezone().isoformat(timespec="seconds"),
+            "checked_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
             "evidence_policy": policy,
             "gates": [{"gate": r.get("gate"), "ok": bool(r.get("ok")),
                        "skipped": bool(r.get("skipped")),
