@@ -640,6 +640,105 @@ def main() -> int:
         hit = claim_issue("visible-markers")
         check("visible-markers 有标记即合规", not hit, str(hit)[:200])
 
+    print("== 门禁单调与交付契约 ==")
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        # G4 默认 SKIP，不再永久 HAS_FAIL
+        r = run([sys.executable, str(ROOT / "writing-rules" / "tools" / "run_gates.py"),
+                 str(BOOK), "--skip", "G0,G1,G2,G3,G5,G6,G7,G8"])
+        check("G4 未实现默认 SKIP 且不拖累退出码",
+              r.returncode == 0 and "G4 SKIP" in r.stdout, r.stdout[:300])
+        # G7 依赖 G8：G8 未过时 G7 不得 PASS（门禁单调）
+        r = run([sys.executable, str(ROOT / "writing-rules" / "tools" / "run_gates.py"),
+                 str(BOOK), "--skip", "G0,G1,G2,G3,G4,G5,G6"])
+        check("G8 未过时 G7 必须 FAIL",
+              "G7 FAIL" in r.stdout and "G8 FAIL" in r.stdout, r.stdout[:400])
+
+        # --write-check 门禁回执
+        bb = td / "rcpt"
+        (bb / "handoff").mkdir(parents=True)
+        (bb / "02_outline.json").write_text("{}", encoding="utf-8")
+        r = run([sys.executable, str(ROOT / "writing-rules" / "tools" / "run_gates.py"),
+                 str(bb), "--skip", "G0,G1,G2,G3,G4,G5,G6,G7,G8", "--write-check"])
+        rec = bb / "handoff" / "04_check.json"
+        ok_rec = rec.is_file() and "gates" in rec.read_text(encoding="utf-8")
+        check("run_gates --write-check 写门禁回执", ok_rec, r.stdout[:300])
+
+        # RPT-11：报告写门禁结论须带回执；声称 P0=0 与实测不符须红
+        wf = bb / "workflow"
+        wf.mkdir(exist_ok=True)
+        rp = wf / "01_读者报告-第1章.md"
+        base_report = ("# 读者报告\n\n评审对象：第 1 章\n日期：2026-10-27\n"
+                       "读完了。工具核对：quality_gate.py P0=0 P1=0。\n\n"
+                       "`units/C01-S1.md:2`：「结论句」\n\n"
+                       "<!-- reviewed_revision: deadbeefdeadbeef -->\n")
+        rp.write_text(base_report, encoding="utf-8")
+        iss = quality_gate.check_report_file(rp, bb)
+        check("门禁结论无回执必须 RPT-11", any(i["rule_id"] == "RPT-11" for i in iss),
+              str(iss)[:300])
+        rp.write_text(base_report.replace(
+            "P1=0。", "P1=0。<!-- gate_check: run_gates --write-check → handoff/04_check.json -->"),
+            encoding="utf-8")
+        iss = quality_gate.check_report_file(rp, bb)
+        check("有回执不再报 RPT-11(P1)", not any(i["rule_id"] == "RPT-11" for i in iss),
+              str(iss)[:300])
+        gc = quality_gate.check_gate_claims(wf, p0_total=3)
+        check("声称 P0=0 与实测不符必须 P0",
+              any(i["rule_id"] == "RPT-11" and i["level"] == "P0" for i in gc), str(gc)[:300])
+
+        # revision 链：登记迁移后旧报告降为可追溯 P1
+        bb2 = td / "chain"
+        (bb2 / "units").mkdir(parents=True)
+        u = bb2 / "units" / "C01-S1.md"
+        u.write_text("# 节\n\n结论句在这里。\n", encoding="utf-8")
+        cur = quality_gate.revision_hash(bb2, [u])
+        rp2 = bb2 / "workflow" / "01_读者报告-第1章.md"
+        rp2.parent.mkdir(exist_ok=True)
+        rp2.write_text(
+            "# 读者报告\n\n评审对象：第 1 章\n日期：2026-10-27\n读完了。\n\n"
+            "`units/C01-S1.md:3`：「结论句在这里。」\n\n"
+            "<!-- reviewed_revision: deadbeefdeadbeef -->\n", encoding="utf-8")
+        iss = quality_gate.check_report_file(rp2, bb2)
+        check("无迁移登记的旧报告仍是 RPT-09 P0",
+              any(i["rule_id"] == "RPT-09" and i["level"] == "P0" for i in iss), str(iss)[:300])
+        (bb2 / "workflow" / "revision_log.jsonl").write_text(
+            json.dumps({"from": "deadbeefdeadbeef", "to": cur,
+                        "reason": "标识清理后重排"}, ensure_ascii=False) + "\n",
+            encoding="utf-8")
+        iss = quality_gate.check_report_file(rp2, bb2)
+        hit = [i for i in iss if i["rule_id"] == "RPT-09"]
+        check("revision_log 登记后旧报告可追溯（P1）",
+              hit and hit[0]["level"] == "P1", str(iss)[:300])
+
+        # 交付命名护栏：未人终审签字禁「终版/final/ready」
+        bk = td / "naming"
+        bk.mkdir()
+        (bk / "02_outline.json").write_text(
+            json.dumps({"book": {"title": "命名", "target_words": 2000, "pages": 10},
+                        "chapters": []}, ensure_ascii=False), encoding="utf-8")
+        pkg = ROOT / "writing-rules" / "tools" / "package_book.py"
+        r = run([sys.executable, str(pkg), str(bk), "--engine", str(ROOT / "techbook-typst"),
+                 "--out", str(td / "终版包.tar.gz"), "--dry-run", "--skip-quality"])
+        check("未签字用「终版」命名必须拒绝",
+              r.returncode != 0 and "--force-name" in r.stdout + r.stderr,
+              (r.stdout + r.stderr)[:300])
+        r = run([sys.executable, str(pkg), str(bk), "--engine", str(ROOT / "techbook-typst"),
+                 "--out", str(td / "终版包.tar.gz"), "--dry-run", "--skip-quality",
+                 "--force-name"])
+        check("--force-name 可显式放行", r.returncode == 0, (r.stdout + r.stderr)[:300])
+        out_tar = td / "book-draft.tar.gz"
+        r = run([sys.executable, str(pkg), str(bk), "--engine", str(ROOT / "techbook-typst"),
+                 "--out", str(out_tar), "--skip-quality"])
+        import tarfile
+        man = ""
+        if out_tar.is_file():
+            with tarfile.open(out_tar, "r:gz") as tar:
+                for m in tar.getnames():
+                    if m.endswith("MANIFEST.txt"):
+                        man = tar.extractfile(m).read().decode("utf-8", errors="replace")
+        check("MANIFEST 带 delivery_status", "delivery_status: draft" in man,
+              man[:300] + (r.stdout + r.stderr)[:200])
+
     print("== 金样板 smoke ==")
     if BOOK.is_dir():
         for g in ("G0", "G1", "G2", "G3", "G5", "G6"):

@@ -40,6 +40,10 @@ REPORT_QUOTE_RE = re.compile(r"(?P<file>[A-Za-z0-9_./-]+\.md):(?P<line>\d+)")
 QUOTE_RE = re.compile(r"「([^」]{4,160})」|“([^”]{4,160})”|\"([^\"]{4,160})\"")
 REV_RE = re.compile(r"<!--\s*reviewed_revision:\s*([0-9a-fA-F]{8,64})\s*-->")
 CODE_LANGS = {"csharp", "cs", "c#"}
+# 门禁结论声称 vs 回执（RPT-11）：报告写「P0=0/零命中/违规 0 处」须能被复跑
+GATE_CLAIM_RE = re.compile(r"(?:spec_lint|quality_gate|run_gates|门禁)[^\n]{0,80}?"
+                           r"(P0\s*=\s*0|零命中|违规\s*0\s*处|全部通过)")
+RECEIPT_RE = re.compile(r"(gate_check|04_check\.json|门禁回执)")
 CHAPTER_BLOCK_WORDS = ("本章标尺", "落地", "避坑", "小结")
 # 裸语句 `foo.Bar;` 在 C# 方法体内不合法；但 `var x = foo.Bar;`（属性读取赋值）
 # 是合法写法，不得误报（F# 案例 `var text = Text.Corpus;`）。
@@ -164,6 +168,52 @@ def _looks_empty_template(text: str) -> bool:
     if text.count("待填") + text.count("待确认") >= 3:
         return True
     return False
+
+
+def revision_chain(root: Path, start: str, want: str) -> bool:
+    """revision_log.jsonl（workflow/ 或书根）：每行 {"from": h, "to": h, "reason": "..."}。
+    合法修订（标识清理、温度修订）登记迁移链后，旧报告的 reviewed_revision 仍可追溯。"""
+    edges: list[tuple[str, str]] = []
+    for cand in (root / "workflow" / "revision_log.jsonl", root / "revision_log.jsonl"):
+        if not cand.is_file():
+            continue
+        for ln in read(cand).splitlines():
+            ln = ln.strip()
+            if not ln:
+                continue
+            try:
+                d = json.loads(ln)
+                edges.append((str(d.get("from")), str(d.get("to"))))
+            except Exception:
+                continue
+    seen, queue = {start}, [start]
+    while queue:
+        cur = queue.pop()
+        if cur == want:
+            return True
+        for a, b in edges:
+            if a == cur and b not in seen:
+                seen.add(b)
+                queue.append(b)
+    return False
+
+
+def check_gate_claims(wf: Path, p0_total: int) -> list[dict]:
+    """报告声称 quality_gate P0=0 而本次实测有 P0 → 声称与实测不符（F# 案例实证）。"""
+    if p0_total <= 0 or not wf.is_dir():
+        return []
+    issues: list[dict] = []
+    pat = re.compile(r"quality_gate[^\n]{0,80}?P0\s*=\s*0")
+    reports = sorted(wf.glob("01_读者报告*.md")) + sorted(wf.glob("02_编辑审校*.md"))
+    final = wf / "06_终审"
+    if final.is_dir():
+        reports += sorted(final.glob("*.md"))
+    for p in reports:
+        if pat.search(read(p)):
+            issues.append(_issue("P0", "RPT-11",
+                                 f"{p.name} 声称 quality_gate P0=0，与本次实测 P0={p0_total} 不符"
+                                 "（旧结论须重跑或加 revision/回执）", p))
+    return issues
 
 
 def check_phase(root: Path, wf: Path, outline: dict, state: dict) -> list[dict]:
@@ -323,11 +373,23 @@ def check_report_file(path: Path, root: Path, min_quotes: int = 3) -> list[dict]
             targets.extend(_quote_targets(root, m.group("file")))
         want = revision_hash(root, targets or None)
         if rev.group(1) != want:
-            issues.append(_issue("P0", "RPT-09",
-                                 f"{path.name} 的 reviewed_revision 与当前稿不一致（旧报告）", path))
+            # 合法的后期修订（标识清理、温度修订…）应在 revision_log.jsonl 登记迁移链
+            if revision_chain(root, rev.group(1), want):
+                issues.append(_issue("P1", "RPT-09",
+                                     f"{path.name} 是旧报告，但已登记 revision_log 迁移链（可追溯）",
+                                     path))
+            else:
+                issues.append(_issue("P0", "RPT-09",
+                                     f"{path.name} 的 reviewed_revision 与当前稿不一致（旧报告）"
+                                     "且无 revision_log 迁移登记", path))
     else:
         issues.append(_issue("P1", "RPT-10",
                              f"{path.name} 缺 reviewed_revision，无法判断是否审的是当前稿", path))
+    # 门禁结论可复核：报告写「P0=0/零命中」必须带可重跑回执
+    if GATE_CLAIM_RE.search(text) and not RECEIPT_RE.search(text):
+        issues.append(_issue("P1", "RPT-11",
+                             f"{path.name} 写了门禁结论但无回执；附 <!-- gate_check: … --> 或"
+                             "引用 handoff/04_check.json（run_gates --write-check 生成）", path))
     return issues
 
 
@@ -778,6 +840,7 @@ def run_checks(book: Path) -> tuple[list[dict], list[dict]]:
     issues += check_contract_deliverables(root, contract)
     issues += check_chapter_blocks(root, contract)
     issues += check_decay(root, contract)
+    issues += check_gate_claims(wf, len([i for i in issues if i["level"] == "P0"]))
     p0 = [i for i in issues if i["level"] == "P0"]
     p1 = [i for i in issues if i["level"] != "P0"]
     return p0, p1

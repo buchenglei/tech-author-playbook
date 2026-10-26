@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  writing-line:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 工具回归测试
+        run: python3 writing-rules/tools/tests/run_tests.py
+      - name: 规则覆盖自检
+        run: python3 writing-rules/tools/check_rule_coverage.py
+      - name: 规范自检与规则总表同步
+        run: |
+          python3 writing-rules/tools/spec_lint.py writing-rules/spec --json
+          git diff --exit-code -- writing-rules/spec/A-规则总表.md \
+            || (echo "规则总表未同步：跑 spec_lint.py spec/ --registry --write" && exit 1)
+      - name: 金样板门禁（G4 默认 SKIP；G8 对结构示范书预期红）
+        run: |
+          python3 writing-rules/tools/run_gates.py books/how-to-write-a-tech-book --json \
+            > gates.json || true
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open("gates.json", encoding="utf-8"))
+          by = {r["gate"]: r for r in d["results"]}
+          hard = [g for g in ("G0", "G1", "G2", "G3", "G5", "G6") if not by.get(g, {}).get("ok")]
+          print("gates:", {g: by[g].get("ok") for g in by})
+          if hard:
+              print("金样板硬门禁不过：", hard)
+              sys.exit(1)
+          PY

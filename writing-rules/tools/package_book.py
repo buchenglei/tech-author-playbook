@@ -24,6 +24,7 @@ import io
 import json
 import os
 import re
+import re
 import subprocess
 import sys
 import tarfile
@@ -166,12 +167,21 @@ MIT © """ + authors + """。排版引擎与正文同仓库分发，保留本 `L
 
 
 def main() -> int:
+    # 错误消息经 SystemExit 打到 stderr；GBK 控制台会按本地编码写导致下游解析乱码
+    for s in (sys.stdout, sys.stderr):
+        if hasattr(s, "reconfigure"):
+            try:
+                s.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("book_dir")
     ap.add_argument("--engine", default=str(ROOT / "techbook-typst"))
     ap.add_argument("--out", default="", help="输出 tar.gz 路径")
     ap.add_argument("--pdf", default="", help="PDF 路径（默认书内 typst/dist/book.pdf，其次 engine/dist）")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--force-name", action="store_true",
+                    help="允许在人终审未签字时用「终版/final/ready」命名（自行承担）")
     ap.add_argument("--skip-quality", action="store_true",
                     help="跳过 validate_quality（交付说明须标 draft）")
     a = ap.parse_args()
@@ -215,14 +225,34 @@ def main() -> int:
         meta["title"] = outline["book"]["title"]
 
     pdf = Path(a.pdf).resolve() if a.pdf else (typst_src / "dist" / "book.pdf")
+
+    # 交付状态：final 人签字前一律 draft；「终版/final/ready」命名受护栏约束
+    wf_state = book / "workflow" / "00_阶段状态.json"
+    if not wf_state.is_file():
+        wf_state = book / "manuscript" / "workflow" / "00_阶段状态.json"
+    final_signed = False
+    try:
+        final_signed = bool(json.loads(wf_state.read_text(encoding="utf-8-sig"))
+                            .get("human_confirmations", {}).get("final", {}).get("confirmed"))
+    except Exception:
+        pass
+    delivery_status = "ready" if final_signed else "draft"
     out = Path(a.out).resolve() if a.out else (ROOT / "dist" / f"{slug}-delivery.tar.gz")
+    if re.search(r"(终版|final|ready)", out.name, re.I) and delivery_status != "ready" \
+            and not a.force_name:
+        raise SystemExit(
+            f"错误：{out.name} 含「终版/final/ready」，但人终审未签字（{wf_state}）。"
+            "内容第一：请改名 draft，或 --force-name 显式承担。")
 
     files: list[tuple[str, bytes]] = []
 
     def add_bytes(arc: str, data: bytes):
         files.append((arc, data))
 
-    add_bytes("README.md", gen_readme(meta, outline, slug).encode("utf-8"))
+    add_bytes("README.md",
+              (f"> 交付状态：**{delivery_status}**"
+               + ("" if delivery_status == "ready" else "（人终审未签字；不得称终版/ready）")
+               + "\n\n" + gen_readme(meta, outline, slug)).encode("utf-8"))
     lic = ROOT / "LICENSE"
     if lic.is_file():
         add_bytes("LICENSE", lic.read_bytes())
@@ -274,6 +304,7 @@ def main() -> int:
     manifest = [
         f"package: {slug}-delivery",
         f"title: {meta.get('title', slug)}",
+        f"delivery_status: {delivery_status}",
         f"date: {dt.datetime.now().isoformat(timespec='seconds')}",
         f"typst_files: {n_typst}",
         f"manuscript_files: {n_manu}",
@@ -294,9 +325,10 @@ def main() -> int:
     # 交付前质量验收（内容第一：体量、报告非空、过程一致）
     vq = ROOT / "writing-rules" / "tools" / "validate_quality.py"
     if vq.is_file() and not a.skip_quality:
-        r = subprocess.run([sys.executable, str(vq), str(book)], capture_output=True, text=True)
-        print(r.stdout)
-        if r.returncode == 2:
+        rr = subprocess.run([sys.executable, str(vq), str(book)], capture_output=True)
+        out_txt = (rr.stdout or b"").decode("utf-8", errors="replace")
+        print(out_txt)
+        if rr.returncode == 2:
             print("交付被质量门禁拦截：请补体量/报告/过程状态，或显式 --skip-quality（须在交付说明声明 draft）")
             return 2
 
