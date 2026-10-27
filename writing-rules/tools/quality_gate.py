@@ -317,6 +317,25 @@ def check_phase(root: Path, wf: Path, outline: dict, state: dict) -> list[dict]:
             issues.append(_issue("P0", "WF-31", "P4 缺实填的 07_项目反哺报告.md", feedback))
         if str(wf_state.get("delivery_status") or "") == "ready" and not final.get("confirmed"):
             issues.append(_issue("P0", "WF-32", "delivery_status=ready 但没有最终人签字", p))
+
+    # 阶段-进度守恒（Avalonia 案例实证）：P1 未人签字只允许试点范围内完稿。
+    # 「phase 老实写 P1 但 69 节全写完」是未签字量产的第三种形态，必须拦。
+    if n <= 1 and not pilot.get("confirmed"):
+        pilot_ch = str((wf_state.get("pilot") or {}).get("chapter") or "").strip()
+        allowed = {str(x) for x in ((wf_state.get("pilot") or {}).get("units") or [])}
+        out_of_scope = []
+        for up in unit_files(root):
+            if up.stem in allowed or (pilot_ch and up.stem.startswith(pilot_ch)):
+                continue
+            if len(read(up).strip()) >= 300:
+                out_of_scope.append(up.stem)
+        if len(out_of_scope) > 2:
+            issues.append(_issue("P0", "WF-24",
+                                 f"phase=P1 且试点未人签字，但已有 {len(out_of_scope)} 个试点外单元完稿"
+                                 f"（{', '.join(out_of_scope[:5])}…）——P1 只写试点章，禁止未签字量产", p))
+        elif out_of_scope:
+            issues.append(_issue("P1", "WF-24",
+                                 f"phase=P1 试点外已起草 {', '.join(out_of_scope)}（签字前不得继续量产）", p))
     return issues
 
 
@@ -428,6 +447,7 @@ def check_evidence(root: Path, outline: dict, contract: dict | None = None) -> l
         missing = sorted(required - header)
         if missing:
             issues.append(_issue("P0", "EVD-01", f"台账缺列：{','.join(missing)}", ledger_p))
+        repo_hits: dict[str, int] = {}
         for i, r in enumerate(rows, 2):
             rid = str(r.get("id") or "").strip()
             if not re.match(r"^E-\d{3}$", rid):
@@ -473,7 +493,9 @@ def check_evidence(root: Path, outline: dict, contract: dict | None = None) -> l
             # E1/E2 的 url 是来源真源 → P0；本机路径泄漏一律 P0。
             url = str(r.get("url") or "").strip()
             if url:
-                if re.match(r"^[A-Za-z]:[\\/]", url) or url.startswith("/") or "\\" in url:
+                if url.startswith("repo:"):
+                    repo_hits[url[5:].lstrip("/") or "."] = repo_hits.get(url[5:].lstrip("/") or ".", 0) + 1
+                elif re.match(r"^[A-Za-z]:[\\/]", url) or url.startswith("/") or "\\" in url:
                     issues.append(_issue("P0", "EVD-15",
                                          f"{rid} 的 url 是本机路径（泄漏且不可核）：{url[:60]}",
                                          ledger_p, i))
@@ -484,6 +506,14 @@ def check_evidence(root: Path, outline: dict, contract: dict | None = None) -> l
             elif level in ("E1", "E2"):
                 issues.append(_issue("P0", "EVD-15", f"{rid} 是 {level} 但缺 url",
                                      ledger_p, i))
+        # repo: 引用必须落地（Avalonia 案例：366 条 repo:bookvault 悬空）
+        for rel, cnt in sorted(repo_hits.items()):
+            cands = [root / rel, root / "manuscript" / rel, root / "code" / rel,
+                     root / "manuscript" / "code" / rel]
+            if not any(c.exists() for c in cands):
+                issues.append(_issue("P0", "EVD-17",
+                                     f"{cnt} 条台账以 repo:{rel} 引用随书文件，但书稿内不存在该路径"
+                                     "（可复核性断链：随书工程必须随包交付）", ledger_p))
 
     units = unit_files(root)
     missing_spec = []
@@ -555,7 +585,8 @@ def _code_block_issues(block: list[str], start: int,
         if clean.count(op) != clean.count(cl):
             issues.append(_issue("P1", "CODE-01", f"代码块括号不平衡：{op}{cl}", path, start))
             break
-    for j, raw in enumerate(block, start):
+    for idx, raw in enumerate(block):
+        j = start + idx
         s = raw.strip()
         if not s or s.startswith("//") or s.startswith("#"):
             continue
@@ -568,7 +599,14 @@ def _code_block_issues(block: list[str], start: int,
                 issues.append(_issue("P0", "CODE-03",
                                      f"裸语句缺调用括号（形如 `foo.Bar;`）：{s[:60]}", path, j))
         if re.search(r"\bnew\s+[A-Z]\w*\s*$", s):
-            issues.append(_issue("P0", "CODE-04", f"new 缺构造括号：{s[:60]}", path, j))
+            # 多行 new（下一行以 { 或 ( 开头的对象初始化器/换行构造实参）合法
+            nxt = ""
+            for nx in block[idx + 1:]:
+                if nx.strip():
+                    nxt = nx.strip()
+                    break
+            if not nxt.startswith(("{", "(")):
+                issues.append(_issue("P0", "CODE-04", f"new 缺构造括号：{s[:60]}", path, j))
     return issues
 
 
@@ -645,6 +683,7 @@ def check_structure(root: Path, outline: dict, contract: dict | None = None) -> 
         secs = ch.get("sections") or []
         if secs:
             last[ch.get("id")] = secs[-1].get("id")
+    unruled: list[str] = []
     for p in units:
         if p.stem not in last.values():
             continue
@@ -653,13 +692,29 @@ def check_structure(root: Path, outline: dict, contract: dict | None = None) -> 
         if miss:
             issues.append(_issue("P1", "QG-03",
                                  f"{p.stem} 作为章末节缺：{', '.join(miss)}", p))
-        # 章末四件事必须行文承载；以「## 本章标尺/## 小结」这类挂牌标题顶数不算
-        for w in CHAPTER_BLOCK_WORDS:
-            if re.search(rf"^#{{2,4}}\s*{re.escape(w)}\s*[:：]?\s*$", text, re.M):
+        # 章末固定块的承载形态必须由合同显式裁决（09 融合评估 + 人签字）：
+        #   chapter_blocks_as_headings: true  → 允许「## 本章标尺/## 落地/## 避坑」检查点小节
+        #   false                             → 必须行文承载（F# 案例裁定）
+        #   未声明却在用标题                    → QG-06 未裁决（Avalonia 案例实证）
+        if any(re.search(rf"^#{{2,4}}\s*{re.escape(w)}\s*[:：]?\s*$", text, re.M)
+               for w in CHAPTER_BLOCK_WORDS):
+            as_head = (contract or {}).get("chapter_blocks_as_headings")
+            if as_head is False:
+                w = next(w for w in CHAPTER_BLOCK_WORDS
+                         if re.search(rf"^#{{2,4}}\s*{re.escape(w)}\s*[:：]?\s*$", text, re.M))
                 issues.append(_issue("P0", "QG-05",
-                                     f"{p.stem} 把章末四件事写成挂牌标题「## {w}」（须改为行文）",
+                                     f"{p.stem} 把章末四件事写成挂牌标题「## {w}」（合同裁定行文承载）",
                                      p))
-                break
+            elif as_head is True:
+                pass
+            else:
+                unruled.append(p.stem)
+    if unruled:
+        issues.append(_issue("P0", "QG-06",
+                             f"{len(unruled)} 个单元把章末固定块写成小节标题，但 00_大纲合同 未声明 "
+                             "chapter_blocks_as_headings——须在 09 融合评估裁决「标题承载（true）」或"
+                             f"「行文承载（false）」并由人签字（{', '.join(unruled[:5])}…）",
+                             root / "units"))
     words = {s.get("id"): int(s.get("words") or 0)
              for ch in (outline.get("chapters") or []) for s in (ch.get("sections") or [])}
     for p in units:
@@ -744,7 +799,7 @@ def check_decay(root: Path, contract: dict | None = None) -> list[dict]:
     """
     issues: list[dict] = []
     try:
-        from spec_lint import WORD2CAT, LABEL_HEAD_RE  # 同目录复用同一真源
+        from spec_lint import WORD2CAT, LABEL_HEAD_RE, LABEL_BLOCK_HEAD_RE  # 同一真源
     except Exception:
         return issues
     metric = (contract or {}).get("word_count_metric") or "cjk_len"
@@ -768,7 +823,7 @@ def check_decay(root: Path, contract: dict | None = None) -> list[dict]:
             t = read(p)
             lens.append(count_chars(t, metric))
             defects += sum(t.count(w) for w in WORD2CAT)
-            defects += len(LABEL_HEAD_RE.findall(t))
+            defects += len(LABEL_HEAD_RE.findall(t)) + len(LABEL_BLOCK_HEAD_RE.findall(t))
             sp = p.with_name(p.stem + ".spec.md")
             if sp.is_file() and re.search(r"E-\d{3}", read(sp)):
                 cov += 1
@@ -808,7 +863,8 @@ def check_decay(root: Path, contract: dict | None = None) -> list[dict]:
 
 
 def check_state_sanity(root: Path, wf: Path, state: dict) -> list[dict]:
-    """阶段状态 sanity：notes_brief 被逐字符污染是记忆脚本/append 误用的指纹。"""
+    """阶段状态 sanity：notes_brief 被逐字符污染是记忆脚本/append 误用的指纹；
+    workflow 提到工具自改/自造而 07 反哺未登记（F#、Avalonia 两案的工具漂移指纹）。"""
     issues: list[dict] = []
     for i, nb in enumerate(state.get("notes_brief") or []):
         if isinstance(nb, str) and 0 < len(nb.strip()) < 2:
@@ -816,6 +872,16 @@ def check_state_sanity(root: Path, wf: Path, state: dict) -> list[dict]:
                                  f"notes_brief[{i}] 是单字符 {nb!r}（疑似字符串被逐字符写入）",
                                  wf / "00_阶段状态.json"))
             break
+    drift_re = re.compile(r"修工具|工具缺陷|自造工具|自建工具|prose_check|工具补丁")
+    drift_hits = [rp.name for rp in sorted(wf.glob("*.md"))
+                  if drift_re.search(read(rp))]
+    if drift_hits:
+        fb = wf / "07_项目反哺报告.md"
+        if not fb.is_file() or _looks_empty_template(read(fb)):
+            issues.append(_issue("P1", "WF-25",
+                                 f"workflow 提到工具修改/自造（{', '.join(drift_hits[:3])}）"
+                                 "但 07_项目反哺报告.md 仍是空模板——工具改动须登记并回流本仓库",
+                                 fb))
     return issues
 
 

@@ -1,11 +1,12 @@
 {
   "_说明": "大纲合同：从用户写作大纲提炼的硬约束。与 writing-rules 与规范不一致时 → 融合评估人确认（见 09_大纲×规范融合评估.md）。生成后勿手改成更松。",
-  "_口径钉死": "word_count_metric / evidence_policy 两项必须在 P1 阶段钉死并经人确认；不钉死会出现同一稿子两种薄厚结论（F# 案例实证）。",
+  "_口径钉死": "word_count_metric / evidence_policy / chapter_blocks_as_headings 三项必须在 P1 阶段钉死并经人确认（09 融合评估签字）。不钉死会出现同一稿子两种薄厚结论（F# 案例）与「固定块写成挂牌小节是否算违规」的悬案（Avalonia 案例）。chapter_blocks_as_headings=true 表示合同固定块允许用小节标题承载（检查点式）；false 表示必须行文承载；不声明却用标题 = QG-06。",
   "outline_file": "",
   "priority_rule": "writing-rules MUST 为基线；大纲要求融合为项目特化层，经 09 融合评估人确认后写入宪法，形成该书统一规则",
 
   "word_count_metric": "cjk_len",
   "evidence_policy": "body-e-tags",
+  "chapter_blocks_as_headings": false,
   "evidence_markers": ["无法验证（未实测）", "本机实测", "官方", "推断", "未实测"],
   "deliverables": [],
   "figures_min": 0,

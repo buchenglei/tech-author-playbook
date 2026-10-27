@@ -26,12 +26,13 @@ LINT = ROOT / "writing-rules" / "tools" / "spec_lint.py"
 QUALITY = ROOT / "writing-rules" / "tools" / "validate_quality.py"
 
 
-def run_gate(which: str, base: Path, evidence_policy: str = "body-e-tags") -> dict:
-    rr = subprocess.run(
-        [sys.executable, str(LINT), "--gate", which, str(base), "--json",
-         "--evidence-policy", evidence_policy],
-        capture_output=True,
-    )
+def run_gate(which: str, base: Path, evidence_policy: str = "body-e-tags",
+             allow_block_headings: bool = False) -> dict:
+    cmd = [sys.executable, str(LINT), "--gate", which, str(base), "--json",
+           "--evidence-policy", evidence_policy]
+    if allow_block_headings:
+        cmd.append("--allow-block-headings")
+    rr = subprocess.run(cmd, capture_output=True)
     # 子进程输出是 UTF-8；text=True 在 GBK 机器上会解码崩溃（stdout 变 None）
     out = rr.stdout.decode("utf-8", errors="replace") if rr.stdout else ""
     err = rr.stderr.decode("utf-8", errors="replace") if rr.stderr else ""
@@ -61,13 +62,15 @@ def main() -> int:
     a = ap.parse_args()
     book = Path(a.book_dir).resolve()
     skip = {s.strip().upper() for s in a.skip.split(",") if s.strip()}
-    # 书稿合同声明的证据承载策略透传给 spec_lint（L-CLAIM-01 口径）
+    # 书稿合同声明的证据承载策略/固定块标题裁决透传给 spec_lint
     policy = "body-e-tags"
+    allow_block_headings = False
     for cand in (book / "workflow" / "00_大纲合同.json",
                  book / "manuscript" / "workflow" / "00_大纲合同.json"):
         try:
-            policy = json.loads(cand.read_text(encoding="utf-8-sig")).get(
-                "evidence_policy") or policy
+            c = json.loads(cand.read_text(encoding="utf-8-sig"))
+            policy = c.get("evidence_policy") or policy
+            allow_block_headings = c.get("chapter_blocks_as_headings") is True
             break
         except Exception:
             continue
@@ -81,7 +84,8 @@ def main() -> int:
             results.append({"gate": g, "ok": True, "skipped": True,
                             "why": "G4（A/B/C 条件实验证据）未实现：默认 SKIP；--require-g4 强制执行"})
             continue
-        res = run_gate(g, book, evidence_policy=policy)
+        res = run_gate(g, book, evidence_policy=policy,
+                       allow_block_headings=allow_block_headings)
         results.append(res)
         if not res.get("ok"):
             worst = 2
@@ -113,11 +117,21 @@ def main() -> int:
                         "msg": "依赖 G8：质量/流程门禁未过，发布门禁不成立（门禁单调性）"})
                     worst = 2
     if a.write_check:
+        try:
+            git_rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                                     capture_output=True, cwd=ROOT)
+            git_rev = git_rev.stdout.decode("utf-8", errors="replace").strip() or None
+        except Exception:
+            git_rev = None
         rec = {
             "generated_by": "writing-rules/tools/run_gates.py",
             "command": f"run_gates.py {book}" + (" --require-g4" if a.require_g4 else ""),
             "checked_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+            # 回执必须能复现：记 git rev 与工具版本（Avalonia 案例：无版本的门禁结论事后无法对账）
+            "git_rev": git_rev,
+            "toolchain": {"python": sys.version.split()[0]},
             "evidence_policy": policy,
+            "chapter_blocks_as_headings": allow_block_headings,
             "gates": [{"gate": r.get("gate"), "ok": bool(r.get("ok")),
                        "skipped": bool(r.get("skipped")),
                        "P0": r.get("P0", 0), "P1": r.get("P1", 0)} for r in results],

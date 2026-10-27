@@ -739,6 +739,101 @@ def main() -> int:
         check("MANIFEST 带 delivery_status", "delivery_status: draft" in man,
               man[:300] + (r.stdout + r.stderr)[:200])
 
+    print("== Avalonia 案例回归（repo:落地/阶段守恒/固定块裁决/多行 new） ==")
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+
+        # EVD-17：repo: 引用悬空必须红（聚合），落地后干净
+        bb = td / "ev"
+        (bb / "units").mkdir(parents=True)
+        (bb / "04_ledger.csv").write_text(
+            "id,claim,level,source_title,url,version,locator,cmd,exit_code,output_hash,date,unit\n"
+            "E-001,c,E0,本机,repo:bookvault,1,x,dotnet run,0,abc,2026-01-01,C01-S1\n"
+            "E-002,c,E0,本机,repo:bookvault,1,x,dotnet run,0,abc,2026-01-01,C01-S1\n",
+            encoding="utf-8")
+        ev = quality_gate.check_evidence(bb, {})
+        hit = [i for i in ev if i["rule_id"] == "EVD-17"]
+        check("repo: 引用悬空必须红且聚合", hit and "2 条" in hit[0]["msg"], str(ev)[:300])
+        (bb / "bookvault").mkdir()
+        ev = quality_gate.check_evidence(bb, {})
+        check("repo: 落地后不报 EVD-17", not any(i["rule_id"] == "EVD-17" for i in ev),
+              str(ev)[:300])
+
+        # WF-24：P1 未签字却全书量产
+        bb = td / "wf24"
+        (bb / "units").mkdir(parents=True)
+        wf = bb / "workflow"
+        wf.mkdir()
+        for i in range(1, 6):
+            (bb / "units" / f"C{i+1:02d}-S1.md").write_text("# 节\n\n" + "正文。" * 120,
+                                                            encoding="utf-8")
+        st = {"phase": "P1", "human_in_loop": True,
+              "human_confirmations": {"pilot": {"confirmed": False}, "final": {"confirmed": False}},
+              "pilot": {"chapter": "C01", "units": []}, "rule_conflict_status": "pending",
+              "reader_persona_confirmed_by_human": False}
+        (wf / "00_阶段状态.json").write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+        iss = quality_gate.check_phase(bb, wf, {}, {})
+        check("P1 未签字全书量产必须 WF-24 P0",
+              any(i["rule_id"] == "WF-24" and i["level"] == "P0" for i in iss), str(iss)[:400])
+
+        # QG-05/06 三态：未裁决/标题承载/行文承载
+        bb = td / "qg6"
+        (bb / "units").mkdir(parents=True)
+        outline = {"chapters": [{"id": "C01", "title": "t",
+                                 "sections": [{"id": "C01-S1"}, {"id": "C01-S2"}]}]}
+        body = "# 节\n\n## 小节\n\n正文讲机制。\n\n## 本章标尺\n\n带走三条判断。\n"
+        (bb / "units" / "C01-S1.md").write_text(body, encoding="utf-8")
+        (bb / "units" / "C01-S2.md").write_text(body, encoding="utf-8")
+        iss = quality_gate.check_structure(bb, outline, {})
+        check("固定块标题未裁决必须 QG-06", any(i["rule_id"] == "QG-06" for i in iss),
+              str(iss)[:300])
+        iss = quality_gate.check_structure(bb, outline, {"chapter_blocks_as_headings": True})
+        check("合同裁定标题承载即豁免",
+              not any(i["rule_id"] in ("QG-05", "QG-06") for i in iss), str(iss)[:300])
+        iss = quality_gate.check_structure(bb, outline, {"chapter_blocks_as_headings": False})
+        check("合同裁定行文承载则 QG-05", any(i["rule_id"] == "QG-05" for i in iss),
+              str(iss)[:300])
+
+        # CODE-04：多行 new（对象初始化器）不误报；单行 new 仍报
+        bb = td / "c04"
+        (bb / "units").mkdir(parents=True)
+        (bb / "units" / "C01-S1.md").write_text(
+            "# 节\n\n## 小节\n\n```csharp\nbooks.Add(new Book\n{\n    Id = \"x\",\n});\n```\n",
+            encoding="utf-8")
+        p0, _ = quality_gate.run_checks(bb)
+        check("多行 new 对象初始化器不报 CODE-04",
+              not any(i["rule_id"] == "CODE-04" for i in p0), str(p0)[:300])
+        (bb / "units" / "C01-S1.md").write_text(
+            "# 节\n\n## 小节\n\n```csharp\nvar b = new Book\n```\n", encoding="utf-8")
+        p0, _ = quality_gate.run_checks(bb)
+        check("单行 new 缺括号仍报 CODE-04",
+              any(i["rule_id"] == "CODE-04" for i in p0), str(p0)[:300])
+
+        # spec_lint --allow-block-headings
+        f = td / "block.md"
+        f.write_text("# t\n\n## 本章标尺\n\n正文一句。\n\n## 机制\n\n又一句。\n", encoding="utf-8")
+
+        def form_labels(extra):
+            rr = subprocess.run([sys.executable, str(LINT), str(f), "--profile", "manuscript",
+                                 "--json"] + extra, capture_output=True)
+            d = json.loads(rr.stdout.decode("utf-8", errors="replace"))
+            return [i for i in d.get("P0", []) if i.get("rule_id") == "L-FORM-01"]
+
+        check("默认固定块词也拦", len(form_labels([])) == 2, str(form_labels([]))[:300])
+        hit = form_labels(["--allow-block-headings"])
+        check("--allow-block-headings 只豁免固定块词",
+              len(hit) == 1 and "机制" in (hit[0].get("quote") or ""), str(hit)[:300])
+
+        # 门禁回执版本化
+        bb = td / "rcpt2"
+        (bb / "handoff").mkdir(parents=True)
+        (bb / "02_outline.json").write_text("{}", encoding="utf-8")
+        r = run([sys.executable, str(ROOT / "writing-rules" / "tools" / "run_gates.py"),
+                 str(bb), "--skip", "G0,G1,G2,G3,G4,G5,G6,G7,G8", "--write-check"])
+        rec = (bb / "handoff" / "04_check.json").read_text(encoding="utf-8")
+        check("门禁回执带 git_rev 与工具版本",
+              '"git_rev"' in rec and '"toolchain"' in rec, rec[:300])
+
     print("== 金样板 smoke ==")
     if BOOK.is_dir():
         for g in ("G0", "G1", "G2", "G3", "G5", "G6"):

@@ -481,29 +481,36 @@ def check_symmetry(text):
 
 
 # 手册腔：认知链挂牌标题（UNIT-21 / LANG-19）
-# 含「去冒号」变体：`## 小结`、`## 本章标尺`、`## 落地`、`## 避坑` 这类
-# 裸词标题同样是表单腔（F# 案例 C42-S3 实证）。带后缀的人话标题
-# （如「小结与官方锚点」「落地三步走」「会踩的坑」）不命中。
+# 含「去冒号」变体：`## 小结`、`## 机制` 这类裸词标题同样是表单腔
+#（F# 案例 C42-S3 实证）。带后缀的人话标题（如「小结与官方锚点」「会踩的坑」）不命中。
 LABEL_HEAD_RE = re.compile(
-    r"^#{2,4}\s*(现象|机制|证据|代价|误区|收束|小结|本章标尺|落地|避坑)\s*(?:[:：]\s*\S|\s*$)"
+    r"^#{2,4}\s*(现象|机制|证据|代价|误区|收束|小结)\s*(?:[:：]\s*\S|\s*$)"
+)
+# 章末固定块词（本章标尺/落地/避坑）：默认也拦，但合同 chapter_blocks_as_headings=true
+#（09 融合评估人签字）时豁免——大纲合同要求固定块的书可能合法地用检查点小节。
+LABEL_BLOCK_HEAD_RE = re.compile(
+    r"^#{2,4}\s*(本章标尺|落地|避坑)\s*(?:[:：]\s*\S|\s*$)"
 )
 # 附录/规范自身豁免
 FORM_EXEMPT_SECTION = ("附录", "禁用词", "句法病灶", "文风样例", "规则总表", "速查", "模板索引",
                        "门禁", "故障", "三族", "待校准", "术语表")
 
 
-def check_form_labels(text, profile="manuscript"):
-    """正文禁止「现象：…」式挂牌小节；附录/工具书豁免。"""
+def check_form_labels(text, profile="manuscript", allow_block_headings=False):
+    """正文禁止「现象：…」式挂牌小节；附录/工具书豁免。
+    allow_block_headings=True 时豁免章末固定块词（合同 chapter_blocks_as_headings=true）。"""
     out = []
     for no, line, in_code, section in split_lines(text):
         if in_code:
             continue
         if any(x in (section or "") for x in FORM_EXEMPT_SECTION):
             continue
-        if LABEL_HEAD_RE.match(line.strip()):
+        s = line.strip()
+        hit = LABEL_HEAD_RE.match(s) or (not allow_block_headings and LABEL_BLOCK_HEAD_RE.match(s))
+        if hit:
             out.append({"rule_id": "L-FORM-01", "level": "P0", "line": no,
                         "msg": "挂牌式小节标题（认知链应溶解在行文，不进标题）",
-                        "quote": line.strip()[:60]})
+                        "quote": s[:60]})
     return out
 
 
@@ -670,7 +677,7 @@ def _valid_source_url(url):
     return u.startswith("repo:")
 
 
-def gate(which, base, evidence_policy="body-e-tags"):
+def gate(which, base, evidence_policy="body-e-tags", allow_block_headings=False):
     issues = []
 
     def need(name):
@@ -903,7 +910,8 @@ def gate(which, base, evidence_policy="body-e-tags"):
             return [{"rule_id": which, "level": "P0", "msg": f"找不到 {base}"}]
         for t in targets:
             issues.extend(run_checks(read(t), t, "manuscript", strict=False,
-                                     evidence_policy=evidence_policy)[0])
+                                     evidence_policy=evidence_policy,
+                                     allow_block_headings=allow_block_headings)[0])
         if which in ("G5", "G7"):
             # 装配级：outline 与 units 对齐、术语表存在
             outline_p = None
@@ -960,7 +968,7 @@ def gate(which, base, evidence_policy="body-e-tags"):
 
 
 def run_checks(text, path, profile, strict, with_registry=True, ref_text="",
-               evidence_policy="body-e-tags"):
+               evidence_policy="body-e-tags", allow_block_headings=False):
     headings = set()
     for _, line, in_code, _ in split_lines(text):
         if in_code:
@@ -993,7 +1001,7 @@ def run_checks(text, path, profile, strict, with_registry=True, ref_text="",
     p0 += check_forbidden(text)
     p0 += check_humor(text)
     if profile == "manuscript":
-        p0 += check_form_labels(text, profile)
+        p0 += check_form_labels(text, profile, allow_block_headings=allow_block_headings)
         p2 += check_table_density(text, profile)
     p1 += check_headings(text)
     p1 += check_sentence_len(text)
@@ -1035,12 +1043,15 @@ def main():
     ap.add_argument("--evidence-policy", default="body-e-tags",
                     choices=list(EVIDENCE_POLICIES),
                     help="证据承载策略（默认 body-e-tags；书稿按 00_大纲合同.evidence_policy 声明）")
+    ap.add_argument("--allow-block-headings", action="store_true",
+                    help="豁免章末固定块挂牌词（合同 chapter_blocks_as_headings=true 时由 run_gates 自动带上）")
     ap.add_argument("--ref-spec", default="",
                     help="被引用规范的路径：其中的规则 ID 与章节号视为已知")
     a = ap.parse_args()
 
     if a.gate:
-        issues = gate(a.gate, a.file or ".", evidence_policy=a.evidence_policy)
+        issues = gate(a.gate, a.file or ".", evidence_policy=a.evidence_policy,
+                      allow_block_headings=a.allow_block_headings)
         p0 = [i for i in issues if i["level"] == "P0"]
         p1 = [i for i in issues if i["level"] != "P0"]
         if a.json:
@@ -1087,7 +1098,8 @@ def main():
 
     ref_text = read(a.ref_spec) if a.ref_spec else ""
     p0, p1, p2, rules = run_checks(text, a.file, a.profile, a.strict, ref_text=ref_text,
-                                   evidence_policy=a.evidence_policy)
+                                   evidence_policy=a.evidence_policy,
+                                   allow_block_headings=a.allow_block_headings)
     must = sum(1 for r in rules.values() if r["strength"] == "MUST")
 
     if a.json:

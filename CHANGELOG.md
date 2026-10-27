@@ -5,6 +5,8 @@
 ## [Unreleased]
 
 ### Added
+- **Avalonia 案例驱动的四项硬检查**：EVD-17 `repo:` 引用落地校验（随书工程必须随包，否则可复核性断链）；WF-24 阶段-进度守恒（P1 未签字却全书量产即 P0）；WF-25 工具自改未登记反哺；QG-06 章末固定块承载形态未裁决（合同 `chapter_blocks_as_headings` 三态：true 检查点小节 / false 行文 / 未声明用标题即 P0）
+- **门禁回执版本化**：`run_gates --write-check` 的 `handoff/04_check.json` 记录 `git_rev` 与工具版本——无版本的「P0=0」结论事后无法对账（Avalonia 自评实证）
 - **批量衰减检测**（F# 案例驱动）：`quality_gate` DECAY-01/02/03 按章聚合体量/纪律/证据完整度，首 ⅓ vs 末 ⅓ 对比；阈值走 `00_大纲合同.decay_thresholds`
 - **合同增强**：`00_大纲合同.json` 新增 `word_count_metric`（字数口径钉死）、`evidence_policy`（body-e-tags|spec-mapping|visible-markers）、`evidence_markers`、`deliverables`、`figures_min`、`chapter_blocks_aliases`、`decay_thresholds`；CTR-01/02 交付物与图数量、CTR-03/04 合同骨架块按章核查
 - **台账校验收紧**：EVD-14 `unit` 必须回指单元/章；EVD-15 `url` 须 `https://` 或 `repo:`，本机路径泄漏 P0；EVD-13 按证据策略分支；WF-23 `notes_brief` 单字符污染
@@ -25,6 +27,8 @@
 - 人工确认不可默示：拒绝「视为默示确认」；人设未确认 / pending_human 未清记 P1
 
 ### Fixed
+- **CODE-04 多行 new 误报**：`books.Add(new Book` + 换行 `{`（对象初始化器）不再误判缺构造括号（Avalonia 案例实证）
+- **挂牌词表按裁决拆分**：`L-FORM-01` 认知链词（现象/机制/…/小结）恒拦；章末固定块词（本章标尺/落地/避坑）在合同 `chapter_blocks_as_headings=true` 时豁免（`--allow-block-headings`，run_gates 自动透传）
 - **工具误报与崩溃（F# 案例实证）**：`spec_lint --json` 非 GBK 字符崩溃（固定 UTF-8）；LANG-05 把 `<!-- src -->` 注释行/英文引文/双反引号当正文计句长（剥离+纯西文不计）；L-FORM-01 漏「去冒号挂牌」（`## 机制`/`## 小结`/`## 本章标尺`）；CODE-03 误报 `var x = a.B;` 属性读取（只报裸语句）；`run_gates`/`run_tests` 子进程输出按 UTF-8 解码；QG-03 关键词可被挂牌标题顶数（新增 QG-05 要求行文承载）
 - **门禁单调性**：`run_gates` G4 未实现默认 SKIP（`--require-g4` 强制），不再永久 HAS_FAIL；G8 未过时 G7 强制 FAIL（禁止「G7 PASS + G8 FAIL」）
 - **G4 未实现不得假绿**：`spec_lint --gate G4` 仍报 P0「未实现的门禁」（默认 `run_gates` 标 SKIP）

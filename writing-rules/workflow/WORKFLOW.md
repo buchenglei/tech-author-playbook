@@ -37,6 +37,9 @@
 9. **尾章不得加速。** `quality_gate` 的 DECAY-01/02/03 按章聚合体量/纪律/证据完整度，对比首 ⅓ 与末 ⅓；量产后半程松劲（骤薄、挂牌回潮、spec 塌缩）是 P0，不是自觉问题。
 10. **门禁结论可复核。** 报告写「P0=0/零命中」必须带 `<!-- gate_check: … -->` 回执或引用 `handoff/04_check.json`（`run_gates --write-check` 生成）；与实测不符按 RPT-11 打 P0。合法的后期修订（标识清理、温度修订）在 `workflow/revision_log.jsonl` 登记迁移链，旧报告才可追溯。
 11. **交付状态与命名。** `human_confirmations.final` 未签字前交付一律 `draft`（MANIFEST/README 均标注）；「终版/final/ready」命名被 `package_book` 护栏拒绝（`--force-name` 显式承担）。禁止把仓库 README 误当书籍 README 交付。
+12. **章末固定块的承载形态必须显式裁决。** 合同 `chapter_blocks_as_headings`（true=检查点小节 / false=行文承载）由 09 融合评估提出、人签字；不声明却在正文用「## 本章标尺/## 落地/## 避坑」这类标题 → QG-06 P0。禁止用默认解释代替人裁决（Avalonia 案例实证）。
+13. **阶段-进度守恒。** `phase=P1` 且试点未签字时，试点章之外的完稿单元 ≥3 个即 WF-24 P0——「如实写 P1 但全书量产」同样是未签字量产，不是合规。
+14. **工具自改必须回流。** 写作会话自造/修改的脚本（如自建检查器、补丁）须在 `07_项目反哺报告.md` 登记（工具名、改了什么、回流计划），交付包带 `tools/`；报告提到工具改动而 07 仍是空模板 → WF-25。
 
 硬门禁由 `writing-rules/tools/quality_gate.py` 执行，并接入 `validate_quality.py`（G8）。没有 rule 的新检查用 `WF-*` / `RPT-*` / `EVD-*` / `CODE-*` / `QG-*` / `DECAY-*` / `CTR-*` 前缀，不冒充规范规则。
 
