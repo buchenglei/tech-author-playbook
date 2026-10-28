@@ -758,6 +758,13 @@ def main() -> int:
         ev = quality_gate.check_evidence(bb, {})
         check("repo: 落地后不报 EVD-17", not any(i["rule_id"] == "EVD-17" for i in ev),
               str(ev)[:300])
+        (bb / "04_ledger.csv").write_text(
+            "id,claim,level,source_title,url,version,locator,cmd,exit_code,output_hash,date,unit\n"
+            "E-001,c,E0,本机,repo:writing-rules/spec,1,x,dotnet run,0,abc,2026-01-01,C01-S1\n",
+            encoding="utf-8")
+        ev = quality_gate.check_evidence(bb, {})
+        check("repo: 指 playbook 本库（金样板口径）不误报",
+              not any(i["rule_id"] == "EVD-17" for i in ev), str(ev)[:300])
 
         # WF-24：P1 未签字却全书量产
         bb = td / "wf24"

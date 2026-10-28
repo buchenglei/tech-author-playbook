@@ -60,24 +60,6 @@ def want(path: Path, root: Path) -> bool:
     return True
 
 
-def copy_tree(src: Path, dest: Path, dry: bool) -> list[str]:
-    added = []
-    if not src.is_dir():
-        return added
-    for p in sorted(src.rglob("*")):
-        if not p.is_file():
-            continue
-        if not want(p, src):
-            continue
-        rel = p.relative_to(src)
-        out = dest / rel
-        added.append(str(Path(dest.name) / rel))
-        if not dry:
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(p.read_bytes())
-    return added
-
-
 def gen_readme(meta: dict, outline: dict, slug: str) -> str:
     title = meta.get("title") or slug
     claim = meta.get("claim") or ""

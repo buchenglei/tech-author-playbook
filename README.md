@@ -58,8 +58,7 @@ tech-author-playbook/
 │       └── handoff/          # S7 交接包六文件
 ├── writing-rules/            # 内容生产：规范 + 门禁脚本 + 可填写 kit
 │   ├── README.md             # 规范入口
-│   ├── 技术书籍写作规范_v1.md  # 导航入口（正文在 spec/）
-│   ├── spec/                 # 规范分片 00–10 + 附录 A–H
+│   ├── spec/                 # 规范分片 00–10 + 附录 A–H（真源，见 spec/README）
 │   ├── 如何改规范.md          # 改规则/阈值/门禁指南
 │   ├── workflow/             # ★ 作者/读者/编辑 + 人 四阶段工作流
 │   ├── tools/                # spec_lint / validate_quality / run_gates / init_book / …
@@ -130,13 +129,6 @@ S0 立项 ──► S1 读者 ──► S2 大纲
 
 闭眼流水线：`init_book.py` 建工程 → 写 `units/` → `assemble_book.py --compile` 在 `books/<slug>/typst/` 出 PDF，不覆盖引擎样书。
 
-| 阶段 | 内容线产出 | 排版线动作 |
-| --- | --- | --- |
-| 立项与结构 | 立项卡、读者表、`outline.json` | 可同步建书稿骨架（`init` / `init-linked`） |
-| 写作 | 逐节 spec → 正文 → 冻结 | 章节落盘 `chapters/`，用语义组件 |
-| 装配 | 全书结构、术语、台账一致 | 配目录章节清单、前言/附录、图表编号 |
-| 交付 | 门禁通过、交接包 | `doctor` / `lint` / 目视 PDF |
-
 **边界**：写作线不规定字号页边距；排版线不规定文风断言。不要把两套规则搅在同一段修改里。
 
 ---
@@ -172,7 +164,7 @@ S0 立项 ──► S1 读者 ──► S2 大纲
 | `writing-rules/workflow/WORKFLOW.md` | **写书三角色工作流** | 外部 Agent 写书开工 |
 | **`AGENTS.md`** | **仓库维护契约** | 改本库任何文件之前 |
 | `writing-rules/README.md` | 内容规范入口 | 做写作、校验任务 |
-| `writing-rules/技术书籍写作规范_v1.md` | 规范导航入口 | 不知从哪读时 |
+| `writing-rules/spec/README.md` | 规范导航（按动作加载分片） | 不知从哪读时 |
 | `writing-rules/spec/` | 写作规范分片（真源） | 按任务分片读 |
 | `writing-rules/如何改规范.md` | 改规则贡献指南 | 动 MUST/阈值/门禁时 |
 | `writing-rules/kit/stage_prompts.md` | S-1…S7 阶段提示词 | 按阶段取用 |

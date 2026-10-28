@@ -5,7 +5,7 @@
 规则正文以 spec/ 分片为单一真源；本脚本只做拼接，不改内容。
 用法：
   python3 build_spec.py            # 打印到 stdout
-  python3 build_spec.py --write 技术书籍写作规范_v1.md
+  python3 build_spec.py --write /tmp/技术书籍写作规范_v1.md
 """
 from __future__ import annotations
 

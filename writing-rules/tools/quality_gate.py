@@ -31,6 +31,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from wordcount import cjk_len, chinese_len  # noqa: E402
 
+REPO_ROOT = Path(__file__).resolve().parents[2]  # playbook 仓库根：repo: 的「本库」
+
 PLACEHOLDER = (
     "待改写", "待定", "TODO", "占位", "请改写", "示例假设",
     "这一节回答什么", "待定章名", "待填",
@@ -144,20 +146,6 @@ def revision_hash(root: Path, targets: list[Path] | None = None) -> str:
         h.update(b"02_outline.json")
         h.update(outline.read_bytes())
     return h.hexdigest()[:16]
-
-
-def _nonempty_data_rows(text: str) -> int:
-    n = 0
-    for ln in text.splitlines():
-        s = ln.strip()
-        if not s.startswith("|"):
-            continue
-        if set(s.replace("|", "").replace("-", "").replace(":", "").strip()) == set():
-            continue
-        cells = [c.strip() for c in s.strip("|").split("|")]
-        if len([c for c in cells if c]) >= 2 and cells[0] not in ("项", "维度", "#", "文件名"):
-            n += 1
-    return n
 
 
 def _looks_empty_template(text: str) -> bool:
@@ -506,10 +494,11 @@ def check_evidence(root: Path, outline: dict, contract: dict | None = None) -> l
             elif level in ("E1", "E2"):
                 issues.append(_issue("P0", "EVD-15", f"{rid} 是 {level} 但缺 url",
                                      ledger_p, i))
-        # repo: 引用必须落地（Avalonia 案例：366 条 repo:bookvault 悬空）
+        # repo: 引用必须落地（Avalonia 案例：366 条 repo:bookvault 悬空）。
+        # 契约上 repo: 指 playbook 本库（REPO_ROOT）；随书工程则解析在书稿内。
         for rel, cnt in sorted(repo_hits.items()):
-            cands = [root / rel, root / "manuscript" / rel, root / "code" / rel,
-                     root / "manuscript" / "code" / rel]
+            cands = [REPO_ROOT / rel, root / rel, root / "manuscript" / rel,
+                     root / "code" / rel, root / "manuscript" / "code" / rel]
             if not any(c.exists() for c in cands):
                 issues.append(_issue("P0", "EVD-17",
                                      f"{cnt} 条台账以 repo:{rel} 引用随书文件，但书稿内不存在该路径"
