@@ -541,6 +541,16 @@ EID_RE = re.compile(r"E-\d{3}")
 
 
 EVIDENCE_POLICIES = ("body-e-tags", "spec-mapping", "visible-markers")
+# 形式类规则：合同 form_freedom=true（申报制发挥）时降为 P1 提示，由人签字裁决。
+# 硬线（L-LANG-01 禁用词、CLAIM/EVD 证据类）永不降级。
+SOFT_FORM_RULES = {"L-FORM-01", "L-FORM-02", "LANG-05", "LANG-11", "LANG-12"}
+
+
+def demote_soft_form(issues: list) -> list:
+    for i in issues:
+        if i.get("rule_id") in SOFT_FORM_RULES and i.get("level") == "P0":
+            i["level"] = "P1"
+    return issues
 # 注意：不要放裸「实测」二字（「实测结果显示」会被误当标记）；标记须是可判定短语
 VISIBLE_MARKERS_RE = re.compile(r"已验证|待核实|无法验证|未实测|本机实测|官方文档|官方|推断")
 
@@ -677,7 +687,8 @@ def _valid_source_url(url):
     return u.startswith("repo:")
 
 
-def gate(which, base, evidence_policy="body-e-tags", allow_block_headings=False):
+def gate(which, base, evidence_policy="body-e-tags", allow_block_headings=False,
+         soft_form=False):
     issues = []
 
     def need(name):
@@ -909,9 +920,11 @@ def gate(which, base, evidence_policy="body-e-tags", allow_block_headings=False)
         else:
             return [{"rule_id": which, "level": "P0", "msg": f"找不到 {base}"}]
         for t in targets:
-            issues.extend(run_checks(read(t), t, "manuscript", strict=False,
-                                     evidence_policy=evidence_policy,
-                                     allow_block_headings=allow_block_headings)[0])
+            got = run_checks(read(t), t, "manuscript", strict=False,
+                             evidence_policy=evidence_policy,
+                             allow_block_headings=allow_block_headings,
+                             soft_form=soft_form)[0]
+            issues.extend(got)
         if which in ("G5", "G7"):
             # 装配级：outline 与 units 对齐、术语表存在
             outline_p = None
@@ -968,7 +981,8 @@ def gate(which, base, evidence_policy="body-e-tags", allow_block_headings=False)
 
 
 def run_checks(text, path, profile, strict, with_registry=True, ref_text="",
-               evidence_policy="body-e-tags", allow_block_headings=False):
+               evidence_policy="body-e-tags", allow_block_headings=False,
+               soft_form=False):
     headings = set()
     for _, line, in_code, _ in split_lines(text):
         if in_code:
@@ -1022,6 +1036,13 @@ def run_checks(text, path, profile, strict, with_registry=True, ref_text="",
             p1.append({"rule_id": "S-RULE-03", "level": "P1", "line": 0,
                        "msg": "附录 A 规则总表与正文不一致，请跑 --registry --write"})
 
+    if soft_form and p0:
+        moved = [i for i in p0 if i.get("rule_id") in SOFT_FORM_RULES]
+        for i in moved:
+            i["level"] = "P1"
+        p0 = [i for i in p0 if i.get("rule_id") not in SOFT_FORM_RULES]
+        p1 = moved + p1
+
     return p0, p1, p2, rules
 
 
@@ -1045,13 +1066,16 @@ def main():
                     help="证据承载策略（默认 body-e-tags；书稿按 00_大纲合同.evidence_policy 声明）")
     ap.add_argument("--allow-block-headings", action="store_true",
                     help="豁免章末固定块挂牌词（合同 chapter_blocks_as_headings=true 时由 run_gates 自动带上）")
+    ap.add_argument("--soft-form", action="store_true",
+                    help="形式类检查降 P1 提示（合同 form_freedom=true 申报制；须登记 deviations.jsonl 由人裁决）")
     ap.add_argument("--ref-spec", default="",
                     help="被引用规范的路径：其中的规则 ID 与章节号视为已知")
     a = ap.parse_args()
 
     if a.gate:
         issues = gate(a.gate, a.file or ".", evidence_policy=a.evidence_policy,
-                      allow_block_headings=a.allow_block_headings)
+                      allow_block_headings=a.allow_block_headings,
+                      soft_form=a.soft_form)
         p0 = [i for i in issues if i["level"] == "P0"]
         p1 = [i for i in issues if i["level"] != "P0"]
         if a.json:
@@ -1099,7 +1123,8 @@ def main():
     ref_text = read(a.ref_spec) if a.ref_spec else ""
     p0, p1, p2, rules = run_checks(text, a.file, a.profile, a.strict, ref_text=ref_text,
                                    evidence_policy=a.evidence_policy,
-                                   allow_block_headings=a.allow_block_headings)
+                                   allow_block_headings=a.allow_block_headings,
+                                   soft_form=a.soft_form)
     must = sum(1 for r in rules.values() if r["strength"] == "MUST")
 
     if a.json:

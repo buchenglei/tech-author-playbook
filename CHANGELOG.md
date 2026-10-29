@@ -5,6 +5,9 @@
 ## [Unreleased]
 
 ### Added
+- **章循环批量工作流**（长任务一致性）：批量期不再「Agent 一气呵成」——默认每 2–3 章一批（`review_every_n_chapters`），批内写作→三角色自审→《章审包》→**人签字（改了什么/裁了什么，空签字无效）**→该批才 frozen；人的调整回写宪法（规则更新而非一次性 patch）。新增模板 `10_章审包.md`、`11_写作者上下文包.md`（每批自包含上下文）与 `deviations.jsonl`
+- **申报制自由度**（治死板）：合同 `form_freedom: true` + `freedom_scope` 4 项章级放开（引入方式/图表密度/句长段长软化/题材口吻幽默）；形式类检查（L-FORM-01/02、LANG-05/11/12）降 P1 提示，有意偏离登记 `deviations.jsonl` 由人逐条裁决（追认=入宪法/收敛=记反例）；硬线（真实性/证据/禁用词/代码可跑/冻结纪律）永不降级。书级结构（章末固定块、附录形态）不逐章放开，走 09 整书裁决
+- **章签名校验**：WF-26 frozen 单元必须被人签字覆盖、WF-27 空签字无效、DEV-01 待裁偏离、DEV-02 签字了却未裁决（走过场）；`spec_lint --soft-form` 与 `run_gates` 合同透传
 - `tools/quality_gate.py` 质量优先硬门禁（接入 `validate_quality` = G8）：P1 未签字不得进 P2、无人值守只能 draft、禁默示确认、报告须 `文件:行号+原句+reviewed_revision`、台账 schema、C# 片段、章末块、质量预算
 - 合同字段钉死（`00_大纲合同.json`）：`word_count_metric`、`evidence_policy`（body-e-tags|spec-mapping|visible-markers）、`chapter_blocks_as_headings`、`deliverables`、`figures_min`、`decay_thresholds`、`chapter_blocks_aliases`
 - 批量质量检查：DECAY-01/02/03（首⅓ vs 末⅓ 衰减）、CTR-01–04（交付物/图数/骨架块）、QG-05/06（章末固定块承载须裁决）

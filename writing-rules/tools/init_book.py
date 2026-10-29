@@ -173,10 +173,12 @@ def scaffold(slug: str, title: str, claim: str, dest_root: Path,
     for name in ("00_阶段状态.json", "00_大纲合同.json", "01_读者报告.md", "02_编辑审校.md",
                  "03_作者改进方案.md", "04_写作宪法.md", "05_章节滚动评估.md",
                  "06_终审报告包说明.md", "07_项目反哺报告.md", "08_交付规范.md",
-                 "09_大纲×规范融合评估.md"):
+                 "09_大纲×规范融合评估.md", "10_章审包.md", "11_写作者上下文包.md"):
         src = wf_src / name
         if src.is_file():
             shutil.copy2(src, wf_dst / name)
+    # 偏离申报制：有意的形式发挥登记于此，人签字时逐条裁决
+    (wf_dst / "deviations.jsonl").write_text("", encoding="utf-8")
     st_p = wf_dst / "00_阶段状态.json"
     if st_p.is_file():
         st = load_json(st_p)

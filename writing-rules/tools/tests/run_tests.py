@@ -841,6 +841,85 @@ def main() -> int:
         check("门禁回执带 git_rev 与工具版本",
               '"git_rev"' in rec and '"toolchain"' in rec, rec[:300])
 
+    print("== 章循环批量与申报制自由度 ==")
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        bb = td / "cycle"
+        (bb / "units").mkdir(parents=True)
+        wf = bb / "workflow"
+        wf.mkdir()
+        outline = {"chapters": [
+            {"id": "C01", "title": "t",
+             "sections": [{"id": "C01-S1", "status": "frozen"},
+                          {"id": "C01-S2", "status": "frozen"},
+                          {"id": "C02-S1", "status": "frozen"}]},
+        ]}
+        for sid in ("C01-S1", "C01-S2", "C02-S1"):
+            (bb / "units" / f"{sid}.md").write_text("# 节\n\n" + "正文。" * 120,
+                                                   encoding="utf-8")
+        st = {"chapter_signoffs": []}
+        (wf / "00_阶段状态.json").write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+        iss = quality_gate.check_signoffs(bb, wf, outline)
+        check("frozen 无签字覆盖必须 WF-26 P0",
+              any(i["rule_id"] == "WF-26" and i["level"] == "P0" for i in iss), str(iss)[:300])
+
+        st["chapter_signoffs"] = [
+            {"batch": "R1", "chapters": ["C01"], "by": "人", "at": "2026-01-01",
+             "notes": "改了 C01-S1 的比喻；无偏离"},
+            {"batch": "R2", "units": ["C02-S1"], "by": "人", "at": "2026-01-02", "notes": ""},
+        ]
+        (wf / "00_阶段状态.json").write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+        iss = quality_gate.check_signoffs(bb, wf, outline)
+        check("签字覆盖后不再 WF-26", not any(i["rule_id"] == "WF-26" for i in iss), str(iss)[:300])
+        check("空签字记录必须 WF-27 P0",
+              any(i["rule_id"] == "WF-27" and i["level"] == "P0" for i in iss), str(iss)[:300])
+
+        # 偏离申报制：未裁决→P1 待人；签字覆盖却未裁决→P0
+        (wf / "deviations.jsonl").write_text(
+            json.dumps({"id": "DEV-001", "unit": "C03-S1", "rule": "LANG-05",
+                        "reason": "本节用长句压节奏"}, ensure_ascii=False) + "\n",
+            encoding="utf-8")
+        iss = quality_gate.check_deviations(bb, wf)
+        check("未签字单元的未裁决偏离报 DEV-01 P1 待人",
+              any(i["rule_id"] == "DEV-01" and i["level"] == "P1" for i in iss), str(iss)[:300])
+        with (wf / "deviations.jsonl").open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"id": "DEV-002", "unit": "C01-S1", "rule": "L-FORM-01",
+                                 "reason": "本节用机制小节"}, ensure_ascii=False) + "\n")
+        st["chapter_signoffs"][0]["deviations_ruled"] = []
+        (wf / "00_阶段状态.json").write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+        iss = quality_gate.check_deviations(bb, wf)
+        check("签字了却未裁决偏离必须 DEV-02 P0",
+              any(i["rule_id"] == "DEV-02" and i["level"] == "P0" for i in iss), str(iss)[:300])
+        st["chapter_signoffs"][0]["deviations_ruled"] = ["DEV-002:追认"]
+        (wf / "00_阶段状态.json").write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+        iss = quality_gate.check_deviations(bb, wf)
+        check("裁决（追认）后偏离无 P0", not any(i["level"] == "P0" for i in iss), str(iss)[:300])
+
+        # form_freedom：QG-05 降 P1；soft-form 把 L-FORM-01 降 P1
+        outline2 = {"chapters": [{"id": "C01", "title": "t",
+                                  "sections": [{"id": "C01-S1"}, {"id": "C01-S2"}]}]}
+        body = "# 节\n\n## 小节\n\n正文讲机制。\n\n## 本章标尺\n\n带走三条判断。\n"
+        (bb / "units" / "C01-S1.md").write_text(body, encoding="utf-8")
+        (bb / "units" / "C01-S2.md").write_text(body, encoding="utf-8")
+        iss = quality_gate.check_structure(bb, outline2, {"chapter_blocks_as_headings": False,
+                                                          "form_freedom": True})
+        hit = [i for i in iss if i["rule_id"] == "QG-05"]
+        check("form_freedom 下 QG-05 降 P1", hit and hit[0]["level"] == "P1", str(iss)[:300])
+        f = td / "soft.md"
+        f.write_text("# t\n\n## 机制\n\n正文一句。\n", encoding="utf-8")
+
+        def form_level(extra):
+            rr = subprocess.run([sys.executable, str(LINT), str(f), "--profile", "manuscript",
+                                 "--json"] + extra, capture_output=True)
+            d = json.loads(rr.stdout.decode("utf-8", errors="replace"))
+            return [i for i in d.get("P0", []) + d.get("P1", [])
+                    if i.get("rule_id") == "L-FORM-01"]
+
+        hit = form_level([])
+        check("默认严格：L-FORM-01 仍是 P0", hit and hit[0]["level"] == "P0", str(hit)[:200])
+        hit = form_level(["--soft-form"])
+        check("--soft-form 把 L-FORM-01 降 P1", hit and hit[0]["level"] == "P1", str(hit)[:200])
+
     print("== 金样板 smoke ==")
     if BOOK.is_dir():
         for g in ("G0", "G1", "G2", "G3", "G5", "G6"):

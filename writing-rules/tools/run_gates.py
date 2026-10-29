@@ -27,11 +27,13 @@ QUALITY = ROOT / "writing-rules" / "tools" / "validate_quality.py"
 
 
 def run_gate(which: str, base: Path, evidence_policy: str = "body-e-tags",
-             allow_block_headings: bool = False) -> dict:
+             allow_block_headings: bool = False, soft_form: bool = False) -> dict:
     cmd = [sys.executable, str(LINT), "--gate", which, str(base), "--json",
            "--evidence-policy", evidence_policy]
     if allow_block_headings:
         cmd.append("--allow-block-headings")
+    if soft_form:
+        cmd.append("--soft-form")
     rr = subprocess.run(cmd, capture_output=True)
     # 子进程输出是 UTF-8；text=True 在 GBK 机器上会解码崩溃（stdout 变 None）
     out = rr.stdout.decode("utf-8", errors="replace") if rr.stdout else ""
@@ -65,12 +67,14 @@ def main() -> int:
     # 书稿合同声明的证据承载策略/固定块标题裁决透传给 spec_lint
     policy = "body-e-tags"
     allow_block_headings = False
+    soft_form = False
     for cand in (book / "workflow" / "00_大纲合同.json",
                  book / "manuscript" / "workflow" / "00_大纲合同.json"):
         try:
             c = json.loads(cand.read_text(encoding="utf-8-sig"))
             policy = c.get("evidence_policy") or policy
             allow_block_headings = c.get("chapter_blocks_as_headings") is True
+            soft_form = c.get("form_freedom") is True
             break
         except Exception:
             continue
@@ -85,7 +89,7 @@ def main() -> int:
                             "why": "G4（A/B/C 条件实验证据）未实现：默认 SKIP；--require-g4 强制执行"})
             continue
         res = run_gate(g, book, evidence_policy=policy,
-                       allow_block_headings=allow_block_headings)
+                       allow_block_headings=allow_block_headings, soft_form=soft_form)
         results.append(res)
         if not res.get("ok"):
             worst = 2
@@ -132,6 +136,7 @@ def main() -> int:
             "toolchain": {"python": sys.version.split()[0]},
             "evidence_policy": policy,
             "chapter_blocks_as_headings": allow_block_headings,
+            "form_freedom": soft_form,
             "gates": [{"gate": r.get("gate"), "ok": bool(r.get("ok")),
                        "skipped": bool(r.get("skipped")),
                        "P0": r.get("P0", 0), "P1": r.get("P1", 0)} for r in results],

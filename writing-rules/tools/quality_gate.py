@@ -685,13 +685,15 @@ def check_structure(root: Path, outline: dict, contract: dict | None = None) -> 
         #   chapter_blocks_as_headings: true  → 允许「## 本章标尺/## 落地/## 避坑」检查点小节
         #   false                             → 必须行文承载（F# 案例裁定）
         #   未声明却在用标题                    → QG-06 未裁决（Avalonia 案例实证）
+        # form_freedom=true（申报制）时 QG-05/06 降 P1，好坏由人签字裁决。
         if any(re.search(rf"^#{{2,4}}\s*{re.escape(w)}\s*[:：]?\s*$", text, re.M)
                for w in CHAPTER_BLOCK_WORDS):
             as_head = (contract or {}).get("chapter_blocks_as_headings")
+            soft = "P1" if (contract or {}).get("form_freedom") is True else "P0"
             if as_head is False:
                 w = next(w for w in CHAPTER_BLOCK_WORDS
                          if re.search(rf"^#{{2,4}}\s*{re.escape(w)}\s*[:：]?\s*$", text, re.M))
-                issues.append(_issue("P0", "QG-05",
+                issues.append(_issue(soft, "QG-05",
                                      f"{p.stem} 把章末四件事写成挂牌标题「## {w}」（合同裁定行文承载）",
                                      p))
             elif as_head is True:
@@ -699,7 +701,8 @@ def check_structure(root: Path, outline: dict, contract: dict | None = None) -> 
             else:
                 unruled.append(p.stem)
     if unruled:
-        issues.append(_issue("P0", "QG-06",
+        soft = "P1" if (contract or {}).get("form_freedom") is True else "P0"
+        issues.append(_issue(soft, "QG-06",
                              f"{len(unruled)} 个单元把章末固定块写成小节标题，但 00_大纲合同 未声明 "
                              "chapter_blocks_as_headings——须在 09 融合评估裁决「标题承载（true）」或"
                              f"「行文承载（false）」并由人签字（{', '.join(unruled[:5])}…）",
@@ -874,6 +877,80 @@ def check_state_sanity(root: Path, wf: Path, state: dict) -> list[dict]:
     return issues
 
 
+def _signoff_covers(entry: dict, unit: str) -> bool:
+    """签字条目覆盖某单元：units 显式列出，或 chapters 以章前缀覆盖。"""
+    if unit in {str(x) for x in (entry.get("units") or [])}:
+        return True
+    return any(unit.startswith(f"{c}-") for c in (entry.get("chapters") or []))
+
+
+def check_signoffs(root: Path, wf: Path, outline: dict) -> list[dict]:
+    """章循环批量：frozen 单元必须有人签字覆盖（WF-26），空签字无效（WF-27）。
+    这是「超长任务切短 + 每批人校准」的执行保障。"""
+    issues: list[dict] = []
+    wf_state = load_json(wf / "00_阶段状态.json") or {}
+    signoffs = [s for s in (wf_state.get("chapter_signoffs") or []) if isinstance(s, dict)]
+    frozen = {s.get("id") for ch in (outline.get("chapters") or [])
+              for s in (ch.get("sections") or []) if s.get("status") == "frozen"}
+    if not frozen:
+        frozen = {str(x) for x in (wf_state.get("done_units") or [])}
+    for i, s in enumerate(signoffs):
+        if not str(s.get("by") or "").strip() or not str(s.get("at") or "").strip():
+            issues.append(_issue("P0", "WF-27",
+                                 f"chapter_signoffs[{i}] 缺签字人/时间", wf / "00_阶段状态.json"))
+        if not str(s.get("notes") or "").strip():
+            issues.append(_issue("P0", "WF-27",
+                                 f"chapter_signoffs[{i}] 签字记录为空——必须写明"
+                                 "「改了什么/裁了什么」，空签字无效", wf / "00_阶段状态.json"))
+    uncovered = sorted(u for u in frozen if u and
+                       not any(_signoff_covers(s, u) for s in signoffs))
+    if uncovered:
+        issues.append(_issue("P0", "WF-26",
+                             f"{len(uncovered)} 个 frozen 单元无人签字覆盖"
+                             f"（{', '.join(uncovered[:5])}…）——章循环批量：人签的批次才能冻结",
+                             wf / "00_阶段状态.json"))
+    return issues
+
+
+def check_deviations(root: Path, wf: Path) -> list[dict]:
+    """偏离申报制：有意的形式发挥登记 deviations.jsonl，人签字时逐条裁决。
+    未裁决 → P1 待人；已签字覆盖却未裁决 → P0（签字走过场）。"""
+    issues: list[dict] = []
+    p = wf / "deviations.jsonl"
+    if not p.is_file():
+        return issues
+    entries = []
+    for ln in read(p).splitlines():
+        ln = ln.strip()
+        if not ln:
+            continue
+        try:
+            entries.append(json.loads(ln))
+        except Exception:
+            issues.append(_issue("P1", "DEV-00", f"deviations.jsonl 行不是合法 JSON：{ln[:40]}", p))
+    wf_state = load_json(wf / "00_阶段状态.json") or {}
+    signoffs = [s for s in (wf_state.get("chapter_signoffs") or []) if isinstance(s, dict)]
+    for e in entries:
+        eid = str(e.get("id") or "?")
+        unit = str(e.get("unit") or "")
+        if not str(e.get("rule") or "").strip() or not str(e.get("reason") or "").strip():
+            issues.append(_issue("P1", "DEV-01", f"{eid} 缺 rule/reason（偏离须说明为什么）", p))
+            continue
+        if e.get("ruled") in ("追认", "收敛"):
+            continue
+        covering = [s for s in signoffs if _signoff_covers(s, unit)]
+        ruled_ids = " ".join(str(x) for s in covering
+                             for x in (s.get("deviations_ruled") or []))
+        if covering and eid not in ruled_ids:
+            issues.append(_issue("P0", "DEV-02",
+                                 f"{eid}（{unit}）所在批次已签字，但偏离未裁决"
+                                 "——签字时必须逐条写「追认/收敛」，否则是走过场", p))
+        else:
+            issues.append(_issue("P1", "DEV-01",
+                                 f"{eid}（{unit}）待人裁决（追认=入宪法 / 收敛=记反例）", p))
+    return issues
+
+
 def run_checks(book: Path) -> tuple[list[dict], list[dict]]:
     book = book.resolve()
     root = resolve_root(book)
@@ -888,6 +965,8 @@ def run_checks(book: Path) -> tuple[list[dict], list[dict]]:
         issues += check_phase(root, wf, outline, state)
         issues += check_reports(root, wf)
         issues += check_state_sanity(root, wf, state)
+        issues += check_signoffs(root, wf, outline)
+        issues += check_deviations(root, wf)
     if (root / "04_ledger.csv").is_file() or unit_files(root):
         issues += check_evidence(root, outline, contract)
     issues += check_code(root)
