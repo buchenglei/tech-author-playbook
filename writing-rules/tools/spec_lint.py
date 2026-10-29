@@ -544,13 +544,6 @@ EVIDENCE_POLICIES = ("body-e-tags", "spec-mapping", "visible-markers")
 # 形式类规则：合同 form_freedom=true（申报制发挥）时降为 P1 提示，由人签字裁决。
 # 硬线（L-LANG-01 禁用词、CLAIM/EVD 证据类）永不降级。
 SOFT_FORM_RULES = {"L-FORM-01", "L-FORM-02", "LANG-05", "LANG-11", "LANG-12"}
-
-
-def demote_soft_form(issues: list) -> list:
-    for i in issues:
-        if i.get("rule_id") in SOFT_FORM_RULES and i.get("level") == "P0":
-            i["level"] = "P1"
-    return issues
 # 注意：不要放裸「实测」二字（「实测结果显示」会被误当标记）；标记须是可判定短语
 VISIBLE_MARKERS_RE = re.compile(r"已验证|待核实|无法验证|未实测|本机实测|官方文档|官方|推断")
 
