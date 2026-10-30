@@ -206,7 +206,18 @@ def main() -> int:
         text = out.read_text(encoding="utf-8") if out.is_file() else ""
         check("md2typ 生成", r.returncode == 0 and "= 章" in text and "== 节标题" in text, r.stdout + r.stderr)
         check("md2typ 转义表格 #", "\\#" in text or "[\\#]" in text or "header: ([\\#]" in text, text[:500])
-        check("md2typ code 组件", "#code[code]" in text, text)
+        check("md2typ code 组件走字符串通道", '#code("code")' in text, text)
+
+        # P17 回归：行内代码内容含 markup 语法字符时必须全字面（字符串通道）
+        f4 = td / "lit.md"
+        f4.write_text("# t\n\n用 `List<T>` 与 `x:DataType=\"vm:Boo\"` 写法，还有 _斜体_ 与 $x$。\n",
+                      encoding="utf-8")
+        out4 = td / "lit.typ"
+        r = run([sys.executable, str(MD2TYP), str(f4), "--title", "章", "-o", str(out4)])
+        t4 = out4.read_text(encoding="utf-8") if out4.is_file() else ""
+        check("行内代码全字面（P17）",
+              '#code("List<T>")' in t4 and "\\_斜体\\_" in t4,
+              t4[:400] + r.stdout + r.stderr)
 
         # 图 / 链接 / 引用 / 表注 / 资源复制
         (td / "fig").mkdir()

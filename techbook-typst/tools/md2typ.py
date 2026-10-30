@@ -13,6 +13,18 @@
   > 引用          → #quote[...]
   --- / ***       → 分隔线
 
+Typst 转义约定（本文件的核心，务必不要改坏）：
+  Typst markup 里 `_ * $ < > @ ~ ` # [ ] \\` 都是语法字符。散文里出现孤立
+  的 `_` 会开启未闭合的 emphasis，编译直接报 "unclosed delimiter"。
+  因此本文件区分两条通道：
+    * markup 通道（正文散文、表格单元格、标题、链接文本）
+      → 用 markup_escape() 逐字符转义 12 个语法字符。
+    * 字符串通道（行内代码、加粗的整段文字）
+      → 用 typst_string() 包成 Typst 字符串字面量，字符串内容不被 markup
+        解析，因此 08_读者假设.md、List<T>、x:DataType="vm:Boo" 之类原样输出。
+      注意：#code("...") 传字符串是全字面的，而 #code[...] 传 content block
+      会把内容当 markup 解析（这正是此前编译失败的根因）。
+
 图片资源：
   --asset-dir <dir> 时，把 Markdown 相对图片复制到 <dir>/<源文件名>/<图片名>，
   并把引用重写为相对 -o 输出目录的路径；找不到图片时保留原路径并警告。
@@ -34,11 +46,50 @@ IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 LINK_RE = re.compile(r"(?<!!)\[([^\]]+)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 CAPTION_RE = re.compile(r"<!--\s*caption:\s*(.*?)\s*-->")
 HR_RE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
+BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
+CODE_RE = re.compile(r"`([^`]+)`")
+
+# Typst markup 语法字符 → 转义后写法（12 项，均实测编译通过）
+MARKUP_ESCAPES = {
+    "\\": "\\\\",
+    "#": "\\#",
+    "[": "\\[",
+    "]": "\\]",
+    "_": "\\_",
+    "*": "\\*",
+    "$": "\\$",
+    "<": "\\<",
+    ">": "\\>",
+    "@": "\\@",
+    "~": "\\~",
+    "`": "\\`",
+}
 
 
-def _escape_cell(c: str) -> str:
-    c = c.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
-    return c.replace("#", "\\#")
+def markup_escape(s: str) -> str:
+    """把普通文本转成 Typst markup 安全文本（不处理引号，保留 smart quote）。"""
+    return "".join(MARKUP_ESCAPES.get(ch, ch) for ch in s)
+
+
+def typst_string(s: str) -> str:
+    """把任意文本包成 Typst 字符串字面量；字符串内容不会被 markup 解析。"""
+    out = s.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{out}"'
+
+
+def render_cell(c: str) -> str:
+    """表格单元格 / 题注渲染：行内代码走字符串通道，其余走 markup 转义。"""
+    tokens: list[str] = []
+
+    def sub(m: re.Match[str]) -> str:
+        tokens.append(f"#code({typst_string(m.group(1))})")
+        return f"\x00{len(tokens) - 1}\x00"
+
+    text = CODE_RE.sub(sub, c)
+    text = markup_escape(text)
+    for i, value in enumerate(tokens):
+        text = text.replace(f"\x00{i}\x00", value)
+    return text
 
 
 def md_table_to_typst(lines: list[str], caption: str | None = None) -> str:
@@ -56,13 +107,13 @@ def md_table_to_typst(lines: list[str], caption: str | None = None) -> str:
     parts = [
         "#tbl(",
         "  columns: (" + ", ".join(["1fr"] * len(header)) + "),",
-        "  header: (" + ", ".join(f"[{_escape_cell(h)}]" for h in header) + "),",
+        "  header: (" + ", ".join(f"[{render_cell(h)}]" for h in header) + "),",
     ]
     for r in body:
         r = (r + [""] * len(header))[: len(header)]
-        parts.append("  (" + ", ".join(f"[{_escape_cell(c)}]" for c in r) + "),")
+        parts.append("  (" + ", ".join(f"[{render_cell(c)}]" for c in r) + "),")
     if caption:
-        parts.append(f"  caption: [{_escape_cell(caption)}],")
+        parts.append(f"  caption: [{render_cell(caption)}],")
     else:
         parts.append("  caption: none,")
     parts.append(")")
@@ -102,24 +153,73 @@ class Converter:
         return f"\x00{len(tokens) - 1}\x00"
 
     def inline(self, text: str) -> str:
+        """把一行 Markdown 散文渲染成 Typst markup。
+
+        关键：所有语法片段先抽成 token 占位符，只对「纯文本部分」做 markup
+        转义，最后再把 token 放回——顺序不能反，否则会破坏宏调用。
+        """
         tokens: list[str] = []
+
+        # 1. 图片（整段替换成宏调用）
         text = IMAGE_RE.sub(
-            lambda m: self.hold(tokens, f'#image("{self.resolve_asset(m.group(2))}")'),
+            lambda m: self.hold(tokens, f"#image({typst_string(self.resolve_asset(m.group(2)))})"),
             text,
         )
+
+        # 2. 链接：#link("url")[文本]。link 的第二个参数只能是 content block，
+        #    所以链接文本走 markup 转义通道。
         text = LINK_RE.sub(
-            lambda m: self.hold(tokens, f'#link("{m.group(2)}")[{m.group(1)}]'),
+            lambda m: self.hold(
+                tokens,
+                f"#link({typst_string(m.group(2))})[{markup_escape(m.group(1))}]",
+            ),
             text,
         )
-        text = re.sub(r"\*\*([^*]+)\*\*",
-                      lambda m: self.hold(tokens, f"#strong[{m.group(1)}]"), text)
-        text = re.sub(r"`([^`]+)`",
-                      lambda m: self.hold(tokens, f"#code[{m.group(1)}]"), text)
-        text = text.replace("#", "\\#")
-        text = text.replace("[", "\\[").replace("]", "\\]")
+
+        # 3. 加粗：#strong[内容]，内部允许再嵌行内代码
+        def bold_sub(m: re.Match[str]) -> str:
+            inner = self._inner(m.group(1), tokens)
+            return self.hold(tokens, f"#strong[{inner}]")
+
+        text = BOLD_RE.sub(bold_sub, text)
+
+        # 4. 行内代码：字符串通道，内容全字面
+        text = CODE_RE.sub(
+            lambda m: self.hold(tokens, f"#code({typst_string(m.group(1))})"),
+            text,
+        )
+
+        # 5. 剩余纯文本做 markup 转义（此时 token 仍是占位符，不会被误伤）
+        text = markup_escape(text)
+
+        # 6. 放回 token
         for i, value in enumerate(tokens):
             text = text.replace(f"\x00{i}\x00", value)
         return text
+
+    def _inner(self, text: str, tokens: list[str]) -> str:
+        """渲染一段被包裹进 content block 的文本（加粗内部用）。"""
+        inner_tokens: list[str] = []
+        t = CODE_RE.sub(
+            lambda m: self.hold(inner_tokens, f"#code({typst_string(m.group(1))})"),
+            text,
+        )
+        t = markup_escape(t)
+        for i, value in enumerate(inner_tokens):
+            t = t.replace(f"\x00{i}\x00", value)
+        return t
+
+    def heading(self, text: str) -> str:
+        """标题：允许行内代码，其余 markup 转义（处理 C# 里的 #、反引号标题）。"""
+        tokens: list[str] = []
+        t = CODE_RE.sub(
+            lambda m: self.hold(tokens, f"#code({typst_string(m.group(1))})"),
+            text,
+        )
+        t = markup_escape(t)
+        for i, value in enumerate(tokens):
+            t = t.replace(f"\x00{i}\x00", value)
+        return t
 
     def convert(self, md_text: str, chapter_title: str | None = None,
                 emit_import: bool = True, emit_chapter_title: bool = True) -> str:
@@ -128,7 +228,7 @@ class Converter:
         if emit_import:
             out += ['#import "../src/book.typ": *', ""]
         if chapter_title and emit_chapter_title:
-            out += [f"= {chapter_title}", ""]
+            out += [f"= {self.heading(chapter_title)}", ""]
 
         offset = 1 if chapter_title else 0
         pending_caption: str | None = None
@@ -186,8 +286,8 @@ class Converter:
             if m:
                 alt, src = m.group(1), m.group(2)
                 path = self.resolve_asset(src)
-                cap = f", caption: [{_escape_cell(alt)}]" if alt else ", caption: none"
-                out += [f'#fig(image("{path}"){cap})', ""]
+                cap = f", caption: [{render_cell(alt)}]" if alt else ", caption: none"
+                out += [f'#fig(image({typst_string(path)}){cap})', ""]
                 i += 1
                 continue
 
@@ -210,7 +310,7 @@ class Converter:
             m = re.match(r"^(#{1,6})\s+(.*)$", s)
             if m:
                 level = min(len(m.group(1)) + offset, 4)
-                out += ["=" * level + " " + m.group(2).strip(), ""]
+                out += ["=" * level + " " + self.heading(m.group(2).strip()), ""]
                 i += 1
                 continue
 

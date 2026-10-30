@@ -22,6 +22,7 @@
 - 四阶段写书工作流 `writing-rules/workflow/`（角色/报告模板/加载卡）、`00_阶段状态.json` 人类闸门字段、CLAUDE/AGENTS/README 三行入口判别器
 
 ### Fixed
+- `md2typ` 行内代码走字符串通道 `#code("...")` + `markup_escape()` 12 字符转义（Avalonia 案例 P17：`List<T>`、`x:DataType="vm:Boo"`、`_斜体_` 曾被 Typst 当 markup 再解析而编译失败）；加粗/链接文本/标题/表格单元分通道渲染；写书会话工具回流
 - EVD-17 误报：`repo:` 按契约解析 playbook 本库（`REPO_ROOT`），金样板 `repo:writing-rules/spec/…` 不再判悬空；随书工程仍解析书稿内
 - 工具误报与崩溃（三案实证）：GBK stdout 崩溃；LANG-05 把注释/英文引文/双反引号计句长；L-FORM-01 漏去冒号挂牌；CODE-03 误报属性读取 `var x = a.B;`；CODE-04 误报多行 `new`；子进程 UTF-8 解码
 - 门禁单调性：G4 未实现默认 SKIP（`--require-g4` 强制）；G8 未过时 G7 强制 FAIL；G0/G1/G2 拒占位；G3 无正文返 N/A；B-01/F-01 改 MUST|自检|阻断
