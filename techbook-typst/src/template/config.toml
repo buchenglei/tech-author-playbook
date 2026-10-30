@@ -33,7 +33,7 @@ theme-path = "themes/github.tmTheme"
 show-lang = true
 
 [fonts]
-serif = ["Songti SC", "Noto Serif CJK SC", "SimSun"]
+serif = ["Noto Serif SC", "Source Han Serif SC", "SimSun"]
 sans = ["Microsoft YaHei", "PingFang SC", "Noto Sans SC"]
 mono = ["Maple Mono NF", "Maple Mono", "Cascadia Code", "Consolas"]
 

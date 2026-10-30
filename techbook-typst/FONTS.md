@@ -6,7 +6,7 @@
 
 | 用途 | 默认回退链 | 说明 |
 | --- | --- | --- |
-| 正文（衬线） | Songti SC → STSong → Noto Serif CJK SC → Source Han Serif SC → SimSun | 书感正文 |
+| 正文（衬线） | Noto Serif SC → Source Han Serif SC → Songti SC → STSong → SimSun | 书感正文 |
 | 标题（黑体） | PingFang SC → Microsoft YaHei → Noto Sans SC → Heiti SC | 层级清晰 |
 | 代码 | Maple Mono NF → Maple Mono → Cascadia Code → Consolas | 推荐 Maple Mono |
 
@@ -14,7 +14,7 @@
 
 ```toml
 [fonts]
-serif = ["Songti SC", "Noto Serif CJK SC", "SimSun"]
+serif = ["Noto Serif SC", "Source Han Serif SC", "SimSun"]
 sans = ["PingFang SC", "Microsoft YaHei", "Noto Sans SC"]
 mono = ["Maple Mono NF", "Cascadia Code", "Consolas"]
 ```
@@ -24,7 +24,7 @@ mono = ["Maple Mono NF", "Cascadia Code", "Consolas"]
 | 字体 | 族名 | 气质 |
 | --- | --- | --- |
 | 宋体-简 / 华文宋体 | Songti SC / STSong | Mac 常见衬线 |
-| 思源宋体 | Noto Serif CJK SC / Source Han Serif SC | 开源书感 |
+| 思源宋体 | Noto Serif SC / Source Han Serif SC | 开源书感 |
 | 中易宋体 | SimSun | Windows 衬线 |
 | 苹方 / 雅黑 / 思源黑体 | PingFang SC / Microsoft YaHei / Noto Sans SC | 标题与 UI |
 

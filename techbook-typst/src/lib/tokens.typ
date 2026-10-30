@@ -95,9 +95,9 @@
 // ---- 字体默认 ---------------------------------------------------------------
 
 #let default-fonts = (
-  serif: ("Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun"),
-  sans: ("PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Heiti SC"),
-  mono: ("Maple Mono NF", "Maple Mono", "Cascadia Code", "Consolas"),
+  serif: ("Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun"),
+  sans: ("Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei"),
+  mono: ("Maple Mono NF", "Cascadia Code", "Consolas", "LXGW WenKai Mono", "NSimSun", "Noto Sans SC"),
 )
 
 // ---- 工具 -------------------------------------------------------------------

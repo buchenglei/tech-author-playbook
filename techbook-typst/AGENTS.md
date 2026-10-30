@@ -167,7 +167,7 @@ show-lines = true
 width = "100%"                   # 与正文同宽
 
 [fonts]
-serif = ["Songti SC", "Noto Serif CJK SC", "SimSun"]
+serif = ["Noto Serif SC", "Source Han Serif SC", "SimSun"]
 sans = ["PingFang SC", "Microsoft YaHei", "Noto Sans SC"]
 mono = ["Maple Mono NF", "Maple Mono", "Cascadia Code", "Consolas"]
 
