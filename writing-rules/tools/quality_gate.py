@@ -162,7 +162,11 @@ def revision_chain(root: Path, start: str, want: str) -> bool:
     """revision_log.jsonl（workflow/ 或书根）：每行 {"from": h, "to": h, "reason": "..."}。
     合法修订（标识清理、温度修订）登记迁移链后，旧报告的 reviewed_revision 仍可追溯。"""
     edges: list[tuple[str, str]] = []
-    for cand in (root / "workflow" / "revision_log.jsonl", root / "revision_log.jsonl"):
+    pkg = root.parent if root.name == "manuscript" else None
+    cands = [root / "workflow" / "revision_log.jsonl", root / "revision_log.jsonl"]
+    if pkg is not None:
+        cands += [pkg / "workflow" / "revision_log.jsonl"]
+    for cand in cands:
         if not cand.is_file():
             continue
         for ln in read(cand).splitlines():
@@ -496,9 +500,13 @@ def check_evidence(root: Path, outline: dict, contract: dict | None = None) -> l
                                      ledger_p, i))
         # repo: 引用必须落地（Avalonia 案例：366 条 repo:bookvault 悬空）。
         # 契约上 repo: 指 playbook 本库（REPO_ROOT）；随书工程则解析在书稿内。
+        # 交付包布局（root=manuscript/）下 code/ 等在包根，需多解析一跳。
+        pkg = root.parent if root.name == "manuscript" else None
         for rel, cnt in sorted(repo_hits.items()):
             cands = [REPO_ROOT / rel, root / rel, root / "manuscript" / rel,
                      root / "code" / rel, root / "manuscript" / "code" / rel]
+            if pkg is not None:
+                cands += [pkg / rel, pkg / "code" / rel]
             if not any(c.exists() for c in cands):
                 issues.append(_issue("P0", "EVD-17",
                                      f"{cnt} 条台账以 repo:{rel} 引用随书文件，但书稿内不存在该路径"
@@ -725,17 +733,22 @@ def check_contract_deliverables(root: Path, contract: dict | None = None) -> lis
     F# 案例：合同承诺 48 章 + 附录 A–J，交付只有一份 80 字节占位——缺项必须红。
     """
     issues: list[dict] = []
+    pkg = root.parent if root.name == "manuscript" else None
     for g in (contract or {}).get("deliverables") or []:
-        if not list(root.glob(str(g))):
+        hit = list(root.glob(str(g))) or (pkg is not None and list(pkg.glob(str(g))))
+        if not hit:
             issues.append(_issue("P0", "CTR-01", f"合同交付物缺失：{g}", root))
     figs_min = (contract or {}).get("figures_min")
     if figs_min:
         n = 0
-        for d in ("typst/chapters", "typst", "chapters"):
-            p = root / d
-            if p.is_dir():
-                n = sum(read(f).count("#fig(") for f in p.glob("*.typ"))
+        for base in [root] + ([pkg] if pkg is not None else []):
+            if n:
                 break
+            for d in ("typst/chapters", "typst", "chapters"):
+                p = base / d
+                if p.is_dir():
+                    n = sum(read(f).count("#fig(") for f in p.glob("*.typ"))
+                    break
         if n < int(figs_min):
             issues.append(_issue("P0", "CTR-02", f"图数量 {n} 低于合同下限 {figs_min}", root))
     return issues
