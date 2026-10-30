@@ -118,3 +118,113 @@
 5. CODE-04 多行 new 误报修复；WF-25 工具自改未登记反哺。
 
 **验证**：`run_tests.py` 98 passed（新增 11 条）；Avalonia 案例跑新门禁复现人工结论：EVD-17「366 条 repo:bookvault 悬空」、WF-24「66 个试点外单元完稿」、QG-06「26 单元固定块未裁决」各一条聚合 P0。
+
+---
+
+> 以下 P16–P21 原编号 P14–P19，来自《Avalonia 实战》写作与打包过程的问题收集（2026-10-27~30），按本库序号重排并入档。
+
+## P16. `check_claims` 的回溯口径窄于 UNIT-05（阻断级，正文无法合规）
+
+**现象**：《Avalonia 实战》正文按纸书要求清掉全部台账编号（520 处 E-xxx）后，G3/G5/G7 各报 30 条 P0，全是「数字「5000 条」未关联台账 E-xxx」一类。
+
+**根因**：规范 `writing-rules/spec/05-写作单元.md:78` 的 UNIT-05 写的是「正文每个数字能回溯到 `claims` 与 `ledger.csv`」；`writing-rules/spec/02-立项.md:66` 的 CLAIM-01 写的是「每个事实断言在台账有一行，标 E0–E3」。两条都是「可回溯」，都不要求编号出现在正文句子里。但 `spec_lint.check_claims` 的实现被写成「同句必须出现 E-xxx」——比规范更严且更窄，把规范认可的「章末证据表/脚注」路径判为不合规。
+
+**修法**：不把工程编号塞回纸书正文，改工具实现。新增 `load_claim_map(unit_path, book_root)`：读本节 `.spec.md` 的 §6 claims 表，用 `CLAIM_MAP_RE` 解析每行的断言列与台账列，把断言文本、台账行 `claim`、台账行 `locator` 三处的带单位数字全部映射到该台账号。`check_claims` 增加第二条回溯路径：同句无 E-id 时，若该句所有数字都命中映射则放行，否则报 P0 指出第一个未溯源数字。`quality_gate` 的 EVD-13 改用同一映射，并按同一口径判定：有未溯源数字报 P1 并列前 8 个，全部覆盖则降为 P2 说明。
+
+**验证**：`run_gates.py` 的 L-CLAIM-01 从 30 条 P0 降到 0；`run_tests.py` 新增三条负例（映射能派生、映射覆盖的数字放行、映射未覆盖的数字仍报），63 passed；`check_rule_coverage.py` COVERAGE_PASS。
+
+**教训**：**门禁实现比规范窄，是最容易被误判成「书稿有问题」的一类缺陷。** 判据是先回到规范原文：UNIT-05 说的是「回溯到 claims 与 ledger.csv」，不是「句子里写编号」。EVD-13 的门禁文案本身就写着「若采用『章末证据表/脚注』，请显式提供映射」——实现与自家文案互相矛盾。
+
+---
+
+## P17. EVD-13 与 CLAIM-01 扫描范围不一致（误报 61 个数字）
+
+**现象**：按 P16 改完 `check_claims` 后，EVD-13 报「61 个数字未落在映射上」。
+
+**根因**：两处实现细节不一致。其一，`NUM_UNIT_RE.findall()` 返回 `(值, 单位)` 元组，而 `load_claim_map` 的 key 是 `m.group(0)` 字符串（如 `"5000 条"`），两者永不相等。其二，CLAIM-01 用 `paragraphs(split_lines(text))` 只取散文段落，代码围栏内的行被 `in_code` 排除、表格行以 `|` 开头也被排除；而 EVD-13 直接扫全文。
+
+**修法**：`findall()` 改 `finditer()` + `m.group(0)`；EVD-13 的扫描范围对齐 CLAIM-01，只看散文段落。围栏内的探针逐字输出与表格行不参与判定——围栏内内容的复核路径是该节台账行的 `cmd` 与 `locator` 与 `output_hash`，不经断言文本。
+
+**验证**：61 → 22 → 0；22 个残留逐个查行确认全部落在围栏或表格内。
+
+**教训**：**同一个语义量在两处实现时，扫描范围与键的形态必须同源。** 修一处不同步另一处，门禁就会自相矛盾。
+
+---
+
+## P18. CODE-03 把声明式赋值判成「缺调用括号」（本书 69 节误报 11 处）
+
+**现象**：`validate_quality.py` 对《Avalonia 实战》报 11 条 P0，全是「CODE-03 语句像属性访问、缺调用括号：var spacing = Spacing;」这类。
+
+**根因**：`quality_gate.SMELL_STATEMENT` 的正则是 `^\s*(?:var\s+[A-Za-z_]\w*\s*=\s*)?[A-Za-z_][\w.]*\s*;\s*$`——它把「带 `var` 声明前缀的赋值」和「整条语句就是一个属性访问」两种形态合并成一条。然后取词用 `re.split(r"[.\s]", head)[0]`，对 `var spacing = Spacing;` 取到的是 `"var"`，于是判定退化成「只要是 `var` 开头就报红」。这在样书（`.typ` 文件）里从未触发，因为那段代码路径只跑 Markdown 书稿。
+
+**修法**：判定面收窄为「整条语句就是一个属性访问」，正则改为 `^\s*[A-Za-z_][\w.]*\s*;\s*$`。`var x = Spacing;`（读属性，合法）与 `var x = foo.Bar;`（右侧像漏了括号）字面形态相同、静态无法区分，但赋值语句本不属于「语句像属性访问」这一规则的语义范围。
+
+**验证**：`run_tests.py` 先加两条负例（声明前缀赋值不误报、裸属性访问仍报）再改实现；改前两条都红，改后都绿。`validate_quality.py` 对本书 P0 从 11 降到 0。
+
+**教训**：**取词那一行决定了规则的实际语义。** 正则看起来在做 A 事，取词环节却在做 B 事，两者叠加出的行为与规则文案完全对不上。
+
+---
+
+## P19. `md2typ` 行内代码走 content block，内容被 Typst 当 markup 再解析
+
+**现象**：书稿正文含 `List<T>`、`x:DataType="vm:Boo"`、`_斜体_` 这类内容时，`typst compile` 报 `unclosed delimiter`，编译失败。
+
+**根因**：`md2typ` 把行内代码渲染成 `#code[内容]`。`#code` 的第一个参数若是 content block，块内内容会被 Typst 当 markup 再解析一遍，于是 `_` 开启 emphasis、`$` 开启公式、`[` 开启内容块，括号不配对即报错。原先的转义逻辑只处理了表格单元格的 `[ ] #`，正文散文与行内代码走的是另一条路径。
+
+**修法**：引入两条明确的通道。markup 通道（正文散文、表格单元格、标题、链接文本）用 `markup_escape()` 逐字符转义 12 个语法字符 `\` `#` `[` `]` `_` `*` `$` `<` `>` `@` `~` `` ` ``；字符串通道（行内代码、图片路径、链接 URL）用 `typst_string()` 包成 Typst 字符串字面量，行内代码改渲染为 `#code("...")`，字符串内容不被 markup 解析。渲染顺序固定为「先抽 token 占位 → 纯文本 markup 转义 → 放回 token」，顺序反了会破坏宏调用。
+
+**验证**：`run_tests.py` 的 md2typ 断言从 `#code[code]` 改为 `#code("code")`，并新增负例「行内代码内容全字面」；`nu build.nu lint` OK；本书 `typst compile` exit 0，249 页，字体回退警告 0 条。
+
+**教训**：**Typst 的 content block 不是字符串。** 凡是「内容要原样出现」的地方，都必须走字符串通道；把内容塞进 content block 等于让它再被解析一次。
+
+---
+
+## P20. 探针 `c15probe` 编译不过，却支撑 10 条 E0 断言
+
+**现象**：打包代码包时批量编译全部探针，`c15probe` 报 `CS0239: 'ResetCard.ApplyTemplate()': cannot override inherited member 'TemplatedControl.ApplyTemplate()' because it is sealed`。但台账里 E-253、E-254、E-256 至 E-260、E-262、E-263、E-265 共 10 条断言的 `locator` 都指向这个探针，且全部标为 E0（本机实测）。**一个编译不过的工程不可能产出 E0 证据**，这条链是断的。
+
+**根因**：两层叠加。
+1. `ResetCard` 用了 `public override void ApplyTemplate()`——这是 Avalonia 11 时代的写法。Avalonia 12.1.4 里 `TemplatedControl.ApplyTemplate()` 已 sealed，模板展开的回调点改为 `protected override void OnApplyTemplate(TemplateAppliedEventArgs e)`。探针的 `csproj` 锁的是 12.1.4，代码却停留在 11。
+2. `Scenario10()` 在 `Scenario6()` 里被调用，但方法体从未写过——作者写到一半把场景 10 的意图并进了场景 6，忘了删调用。而 `ResetCard` 正是场景 10 该用的类，定义了却从未被使用，是同一个未完成编辑的两半。
+
+**修法**：`ApplyTemplate` 改为 `OnApplyTemplate(TemplateAppliedEventArgs e)`；补齐 `Scenario10` 的实现——打高亮、滚动 20 步、观察带高亮的条目序列。
+
+**验证**：修复后 `dotnet build -c Release` 0 Error；`dotnet run` 的输出与台账逐条吻合——E-253「滚动 20 步里带高亮的条目 = 条目9 → 条目18 → 条目27」、E-254「容器实例总数 = 10」、E-259「supportsRecycling=True 模板累计构造 30 次 / False 51 次」、E-260「CacheLength = 0/0.5/1/1.5/2 分别对应容器数 9/17/26/33/41，越界抛 ArgumentException」、E-262「ClearItemContainer 之后 highlight 仍为 True」、E-263「修复后滚动中带高亮的条目：无」、E-257 回收调用链、`ItemContainerGenerator` 六个公开方法、`recycleKey` 各类型结果相同、VSP 公开成员列表——全部对上。
+
+**新增价值**：补齐的场景 10 直接印证了 C15-S3 的论点「OnApplyTemplate 为什么不是答案」——实测高亮仍跟着容器跑到条目 15 → 31 → 45，说明模板只在首次展开时应用，容器复用时根本不会再走那里。书里原本只有构造次数（91）与模板展开次数（53）的推论，现在有了直接证据。
+
+**教训**：**探针能编译不等于探针能跑，但它编译不过就是一条断掉的证据链。** 台账里的 E0 标记是「本机实测」的断言，而断言指向的工程在当前 SDK 下根本构建不出来——这种矛盾在只跑门禁不跑探针的流程里不会被发现。打包时全量编译一遍所有探针，才把这三处断链暴露出来。
+
+---
+
+## P21. 探针 `c16trim` 的根工程默认吞进子目录源码
+
+**现象**：`c16trim` 报 `CS0101: The namespace '<global namespace>' already contains a definition for 'P'`，以及 `CS0579: Duplicate 'TargetFrameworkAttribute'`。
+
+**根因**：这个目录里有三棵工程——根目录 `c16trim.csproj`（自带一个 `Vm` 类，用来观察「属性从未静态引用时会被裁剪」）、`lib/lib.csproj`（被裁剪的模型库）、`app/app.csproj`（引用 lib，用反射取属性）。SDK 风格项目默认把**项目目录下所有子目录**的 `.cs` 一并纳入编译，于是根工程同时吞进了 `app/Program.cs` 与 `lib/Lib.cs`，撞出两个 `class P`；`lib/obj` 里残留的 `.AssemblyInfo.cs` 又叠加出属性重复。真正被测的 `app/` 子工程本身编译是好的。
+
+**修法**：根 csproj 增加两条排除——`<Compile Remove="app/**/*.cs" />` 与 `<Compile Remove="lib/**/*.cs" />`。
+
+**验证**：清掉 `bin/obj` 后根工程 `Build succeeded`，0 Warning；`app/` 子工程不受影响。
+
+**教训**：**多工程探针目录必须显式声明编译边界。** 三个工程放在一个目录里是「打包方便」的直觉，但 SDK 的默认 glob 会让它们互相污染。这类问题在原沙箱里同样存在——只是当时验证的是 `app/` 而不是根工程，所以没暴露。
+
+---
+
+## P22. 重构轮新发现：交付包布局解析缺一跳、glob 存在性≠齐备、教具型废弃 API 的处置口径（P0/P1，Avalonia 重构实证）
+
+**现象**（2026-10-30 重构《Avalonia 实战》）：
+- 交付包布局（`root=manuscript/`）下，`EVD-17`（`repo:` 落地）、`CTR-01`（交付物 glob）、`revision_chain`（迁移链）三处都只解析 `root` 一层，而 `code/`、`workflow/` 在包根——368 条台账、4 项交付物、2 条迁移链全部误报 P0。同款缺陷第三次出现（F# 案例 EVD-15 后），说明「扁平书根 vs 交付包」必须一次性统一解析。
+- 复制探针的脚本自摆乌龙（`mkdir` 后 `copytree` 报错），空目录却被 `CTR-01` 的 glob「撞中」判齐备——**交付物检查只看存在性，不看内容**，会放过空壳。
+- 正文说「`TextBox.Watermark` 已废弃」而主工程仍在用：它是 C10「增量构建藏告警」实验的教具，22 处 E0 引文依赖它。二选一的处置必须由人裁定（本轮裁定：终版 0 废弃 API，代码迁移 `PlaceholderText`、13 处引文改 0 告警、5 处历史引文加版本注、台账补 E-490/E-491）。
+- 证据核验补完：219 处 `src:` 锚点逐条对账 0 无效；148 工程全量构建中 7 处「失败」逐一查证为故意破损反例（报错与台账逐条吻合）——**反例工程必须有预期失败清单**，否则与真 bug 无法区分。
+- 环境注：沙箱禁止 testhost 监听父进程，`dotnet test` 起不来；用反射运行器直接执行 xunit [Fact] 复核 10/10 通过。
+
+**根因**：交付包布局是一等公民，但工具的路径解析仍是「书稿扁平」假设；交付检查止步于存在性；教具与缺陷在静态检查里形态相同。
+
+**修法**：
+1. `quality_gate` 对 `root.name == "manuscript"` 的包根多解析一跳（EVD-17/CTR-01/02、revision_chain）；已修并回归 109 passed（commit df6abcc）。
+2. 待办：交付物检查加内容健全性（非空目录/文件数下限）；给「故意破损反例工程」加清单机制（如 `probes/README.md` 或台账 locator 标记），构建核验脚本按清单区分预期失败与真 bug。
+3. 教具型废弃 API 不留终版：人裁定优先（本轮模式：迁移代码 + 引文版本注 + 台账补账）。
+
+**验证**：重构后 `quality_gate` P0=0（此前 5 个误报 P0 清零）；109 passed；最终交付 3 项（书稿源码 192 文件 / book.pdf 253 页 / 代码示例 988 文件）。
