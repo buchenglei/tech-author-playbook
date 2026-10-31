@@ -300,6 +300,42 @@ def main() -> int:
                  and "空壳" in i.get("msg", "")]
         check("CTR-01 空壳检出", bool(shell), str(rules))
 
+    print("== quality_gate 预期失败清单（P22-2）==")
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        (td / "code" / "broken").mkdir(parents=True)
+        (td / "code" / "broken" / "p.csproj").write_text(
+            '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
+            '<TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>',
+            encoding="utf-8")
+        bad = td / "code" / "broken" / "Bad.cs"
+
+        def qg():
+            r = run([sys.executable, str(QG), str(td), "--json"])
+            return json.loads(r.stdout[r.stdout.find("{"):] if "{" in r.stdout else "{}")
+
+        # ① 登记的反例工程（预期失败+签名匹配）→ 不报 CODE-05
+        bad.write_text("class Bad { void M( { } }\n", encoding="utf-8")
+        (td / "code" / "expected-failures.txt").write_text(
+            "# 故意编译不过的实验工程：路径 | 预期报错签名\nbroken/p.csproj | error CS\n",
+            encoding="utf-8")
+        d = qg()
+        p0 = [i for i in d.get("P0", []) if i.get("rule_id") == "CODE-05"]
+        check("反例登记后不报 CODE-05（P22-2）", not p0, str(d.get("P0", []))[:300])
+        # ② 登记了却可编译 → P1 CODE-06 清单过期
+        bad.write_text("class Bad { }\n", encoding="utf-8")
+        d = qg()
+        check("清单过期报 CODE-06（P22-2）",
+              any(i.get("rule_id") == "CODE-06" and "过期" in i.get("msg", "")
+                  for i in d.get("P1", [])), str(d.get("P1", []))[:300])
+        # ③ 未登记的失败 → P0 CODE-05
+        bad.write_text("class Bad { void M( { } }\n", encoding="utf-8")
+        (td / "code" / "expected-failures.txt").write_text("", encoding="utf-8")
+        d = qg()
+        check("未登记失败报 CODE-05（P22-2）",
+              any(i.get("rule_id") == "CODE-05" for i in d.get("P0", [])),
+              str(d.get("P0", []))[:300])
+
     print("== sync_handoff ==")
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)

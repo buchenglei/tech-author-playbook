@@ -639,23 +639,78 @@ def check_code(root: Path) -> list[dict]:
 
 
 def check_code_project(root: Path) -> list[dict]:
-    """书稿若带 code/ 工程，跑一次真实 dotnet build；无 code/ 则跳过。"""
+    """书稿若带 code/ 工程，做真实 dotnet build（全量）；无 code/ 则跳过。
+
+    P22-2（Avalonia 实证）：故意编译不过的反例工程（复现编译错误的教学实验）
+    与真 bug 在构建核验里形态相同。约定 `code/expected-failures.txt` 登记预期
+    失败（每行「相对路径 | 预期报错签名」，# 注释），据此分流：
+      - 未登记的构建失败          → P0（真 bug 或漏登记）
+      - 登记了却实测可编译        → P1 CODE-06（清单过期）
+      - 登记的失败不含预期签名    → P1 CODE-06（实验漂移，报错变了）
+      - 登记条目找不到工程        → P1 CODE-06
+    """
     code = root / "code"
     if not code.is_dir():
         return []
-    projects = sorted(list(code.glob("*.sln")) + list(code.glob("*.slnx"))
-                      + list(code.glob("*.csproj")))
-    if not projects:
+    all_projects = sorted({p for p in
+                           list(code.rglob("*.sln")) + list(code.rglob("*.slnx"))
+                           + list(code.rglob("*.csproj"))
+                           if "bin" not in p.parts and "obj" not in p.parts})
+    if not all_projects:
         return []
     dotnet = shutil.which("dotnet")
     if not dotnet:
         return [_issue("P1", "CODE-00", "书稿有 code/ 但本机无 dotnet，未做真实编译", code)]
-    r = subprocess.run([dotnet, "build", str(projects[0]), "--nologo"],
-                       cwd=code, capture_output=True, text=True, errors="ignore")
-    if r.returncode != 0:
-        tail = "\n".join((r.stdout + r.stderr).splitlines()[-8:])
-        return [_issue("P0", "CODE-05", f"code/ 编译失败：{tail}", code)]
-    return []
+
+    # 解决方案覆盖其目录树下的 csproj（避免重复构建）
+    solutions = [p for p in all_projects if p.suffix in (".sln", ".slnx")]
+    projects = [p for p in all_projects if p.suffix == ".csproj"
+                and not any(s.parent == p.parent or s.parent in p.parents
+                            for s in solutions)]
+    projects += solutions
+
+    exp_fail: dict[str, str] = {}
+    exp = code / "expected-failures.txt"
+    if exp.is_file():
+        for line in read(exp).splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            rel, _, sig = line.partition("|")
+            exp_fail[rel.strip().replace("\\", "/")] = sig.strip()
+
+    issues: list[dict] = []
+    seen: set[str] = set()
+    for proj in projects:
+        rel = proj.relative_to(code).as_posix()
+        try:
+            r = subprocess.run([dotnet, "build", str(proj), "--nologo", "-v", "q"],
+                               cwd=code, capture_output=True, text=True,
+                               errors="ignore", timeout=600)
+        except subprocess.TimeoutExpired:
+            issues.append(_issue("P0", "CODE-05", f"code/ 构建超时：{rel}", code))
+            continue
+        out = r.stdout + r.stderr
+        sig = exp_fail.get(rel)
+        if sig is not None:
+            seen.add(rel)
+        if r.returncode != 0:
+            tail = "\n".join(out.splitlines()[-8:])
+            if sig is None:
+                issues.append(_issue("P0", "CODE-05",
+                                     f"code/ 编译失败（未在 expected-failures.txt 登记）"
+                                     f"：{rel}：{tail}", code))
+            elif sig and sig not in out:
+                issues.append(_issue("P1", "CODE-06",
+                                     f"预期失败工程 {rel} 的报错不含签名「{sig}」"
+                                     f"（实验漂移，报错变了）", code))
+        else:
+            if sig is not None:
+                issues.append(_issue("P1", "CODE-06",
+                                     f"预期失败清单过期：{rel} 实测可编译", code))
+    for rel in sorted(set(exp_fail) - seen):
+        issues.append(_issue("P1", "CODE-06", f"预期失败清单条目无对应工程：{rel}", code))
+    return issues
 
 
 def check_structure(root: Path, outline: dict, contract: dict | None = None) -> list[dict]:
