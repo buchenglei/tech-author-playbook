@@ -1018,7 +1018,9 @@ def run_checks(text, path, profile, strict, with_registry=True, ref_text="",
     p2 += check_symmetry(text)
     p2 += check_cite(text)
     if profile == "manuscript":
-        p0 += check_claims(text, ledger_ids=None, evidence_policy=evidence_policy)
+        claims = check_claims(text, ledger_ids=None, evidence_policy=evidence_policy)
+        p0 += [i for i in claims if i.get("level") == "P0"]
+        p1 += [i for i in claims if i.get("level") != "P0"]
         unit_iss = check_unit_files(path)
         p0 += [i for i in unit_iss if i["level"] == "P0"]
         p1 += [i for i in unit_iss if i["level"] != "P0"]

@@ -645,6 +645,13 @@ def main() -> int:
         check("body-e-tags 数字无 E-xxx 仍 P0", hit and hit[0]["level"] == "P0", str(hit)[:200])
         hit = claim_issue("spec-mapping")
         check("spec-mapping 降为 P1", hit and hit[0]["level"] == "P1", str(hit)[:200])
+        # 回归：降级条目必须落 P1 桶，不得混入 P0 池（run_checks 路由 bug）
+        rr = subprocess.run([sys.executable, str(LINT), str(f), "--profile", "manuscript",
+                             "--json", "--evidence-policy", "spec-mapping"], capture_output=True)
+        dd = json.loads(rr.stdout.decode("utf-8", errors="replace"))
+        check("spec-mapping 的 L-CLAIM 不得出现在 P0 池",
+              not any(i.get("rule_id") == "L-CLAIM-01" for i in dd.get("P0", [])),
+              str([(i.get('rule_id'), i.get('level')) for i in dd.get('P0', [])])[:200])
         hit = claim_issue("visible-markers")
         check("visible-markers 无标记仍 P0", hit and hit[0]["level"] == "P0", str(hit)[:200])
         f.write_text("# t\n\n无法验证（未实测）：实测结果显示体积下降 3.7%。\n", encoding="utf-8")
