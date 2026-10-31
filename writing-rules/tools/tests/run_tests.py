@@ -127,6 +127,18 @@ def main() -> int:
         data, _ = lint_json(f3)
         check("禁用词 L-LANG-01", any(i.get("rule_id") == "L-LANG-01" for i in data.get("P0", [])))
 
+        # P23-5 回归：审校实证漏网词「留意/不难」入表；--print-forbidden 为取词单一入口
+        f3b = td / "bad2.md"
+        f3b.write_text("# t\n\n这里要留意一个变化，原因不难想。\n", encoding="utf-8")
+        data, _ = lint_json(f3b)
+        msgs = [i.get("msg", "") for i in data.get("P0", []) if i.get("rule_id") == "L-LANG-01"]
+        check("留意/不难 入禁用词表（P23-5）",
+              any("留意" in m for m in msgs) and any("不难" in m for m in msgs), str(msgs))
+        r3 = run([sys.executable, str(LINT), "--print-forbidden"])
+        check("--print-forbidden 输出词表（P23-5）",
+              r3.returncode == 0 and "留意" in r3.stdout and "不难" in r3.stdout,
+              r3.stdout[:300])
+
         # G0：repo: URL 合法
         proj = td / "proj"
         proj.mkdir()

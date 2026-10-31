@@ -33,6 +33,7 @@
 - `check_claims` 逐句核对；L-VOL-01 真实产出；09 报告名单一；金样板定位对齐「结构示范、体量未达 G8」
 
 ### Changed
+- 禁用词单一真源（P23-5）：`spec_lint.FORBIDDEN` 为唯一词表，新增 `--print-forbidden` 机器取词入口（审校提示词/模板禁手抄）；补审校实证漏网词「留意/不难」，去掉被覆盖的「值得注意的是/不难看出」（分别含于「注意/不难」）；spec §6.3 标明上表为例词
 - 章循环改造后的表述清扫：briefs（00 开工/CHECK/P2）、roles/author、templates/05、stage_prompts 的旧「每 3 章/滚动产出/人不参与」一律对齐批节奏（2–3 章/批人签）；修「阻立」错字；删未接线的 `demote_soft_form`；WORKFLOW §0.2 冗长条款收紧
 - 写作规则模型：writing-rules MUST 为基线，大纲要求融合进宪法（09 融合评估 + 人签字）
 - UNIT-14 代码溯源接受 `src:`/`path:` 或台账 `E-xxx`；表格密度降 SHOULD；URL 契约 `https://`|`repo:`；版权统一 CodeBu

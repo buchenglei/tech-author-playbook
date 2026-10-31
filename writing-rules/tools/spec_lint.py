@@ -45,12 +45,16 @@ DOMAIN_NAME = {
 PLACEHOLDER_TERMS = ("示例假设", "请改写", "待改写", "待定", "TODO", "占位",
                      "这一节回答什么", "待定章名", "待填")
 
-# 禁用词（§6.3）。四类，命中即改。
+# 禁用词（§6.3）。四类，命中即改。机器可读单一真源：spec_lint.py --print-forbidden
+#（审校提示词/模板一律从这里取词表，禁止手抄——Avalonia 审校实证「留意/不难」
+# 因清单手抄漂移漏网两轮）
 FORBIDDEN = OrderedDict([
-    ("空泛强调", ["注意", "重要", "务必", "千万", "显然", "众所周知", "不言而喻", "毋庸置疑"]),
-    ("主观评价", ["强大", "优雅", "高效", "完美", "极致", "丰富", "灵活", "轻松", "简单", "容易"]),
+    ("空泛强调", ["注意", "重要", "务必", "千万", "显然", "众所周知", "不言而喻",
+                "毋庸置疑", "留意"]),
+    ("主观评价", ["强大", "优雅", "高效", "完美", "极致", "丰富", "灵活", "轻松",
+                "简单", "容易"]),
     ("营销话术", ["一键", "开箱即用", "一站式", "业界领先", "最佳实践"]),
-    ("填充过渡", ["首先", "其次", "接下来", "值得注意的是", "不难看出"]),
+    ("填充过渡", ["首先", "其次", "接下来", "不难"]),
 ])
 
 WORD2CAT = {w: c for c, ws in FORBIDDEN.items() for w in ws}
@@ -1065,7 +1069,14 @@ def main():
                     help="形式类检查降 P1 提示（合同 form_freedom=true 申报制；须登记 deviations.jsonl 由人裁决）")
     ap.add_argument("--ref-spec", default="",
                     help="被引用规范的路径：其中的规则 ID 与章节号视为已知")
+    ap.add_argument("--print-forbidden", action="store_true",
+                    help="打印禁用词表（JSON，按类别）——审校提示词/模板的单一取词入口")
     a = ap.parse_args()
+
+    if a.print_forbidden:
+        print(json.dumps({c: ws for c, ws in FORBIDDEN.items()},
+                         ensure_ascii=False, indent=2))
+        return 0
 
     if a.gate:
         issues = gate(a.gate, a.file or ".", evidence_policy=a.evidence_policy,
