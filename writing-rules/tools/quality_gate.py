@@ -738,6 +738,15 @@ def check_contract_deliverables(root: Path, contract: dict | None = None) -> lis
         hit = list(root.glob(str(g))) or (pkg is not None and list(pkg.glob(str(g))))
         if not hit:
             issues.append(_issue("P0", "CTR-01", f"合同交付物缺失：{g}", root))
+            continue
+        # P22：glob 存在 ≠ 齐备——空目录/0 字节文件是空壳（Avalonia 实证：探针
+        # 复制脚本挂了，空目录却被 glob「撞中」判齐备）
+        def _alive(x: Path) -> bool:
+            if x.is_file():
+                return x.stat().st_size > 0
+            return x.is_dir() and any(f.is_file() for f in x.rglob("*"))
+        if not any(_alive(x) for x in hit):
+            issues.append(_issue("P0", "CTR-01", f"合同交付物是空壳（无有效内容）：{g}", root))
     figs_min = (contract or {}).get("figures_min")
     if figs_min:
         n = 0
@@ -964,6 +973,74 @@ def check_deviations(root: Path, wf: Path) -> list[dict]:
     return issues
 
 
+def check_spec_and_blocks(root: Path) -> list[dict]:
+    """P23 两查：spec↔ledger 错挂对账（EVD-18/19）+ 片段示意注记后缺代码块（QG-07）。
+
+    Avalonia 内容审校实证：spec 主张整表 +10 错挂 E 号三处（主张与台账 claim
+    逐字相同却挂错行，肉眼全对、机器可查）；「片段示意：下方代码块…」注记在而
+    代码块丢失 7+ 处。EVD-18（挂不存在的 E 号）P0；EVD-19（主张与台账 claim
+    不像，疑似错挂）P1 提示。
+    """
+    import difflib
+    issues: list[dict] = []
+    ledger_claims: dict[str, str] = {}
+    lp = root / "04_ledger.csv"
+    if lp.is_file():
+        for r in csv.DictReader(read(lp).splitlines()):
+            rid = str(r.get("id") or "").strip()
+            if rid:
+                ledger_claims[rid] = str(r.get("claim") or "")
+    for p in unit_files(root):
+        # ① 片段示意注记后 12 行内必须出现代码块
+        lines = read(p).splitlines()
+        in_code = False
+        for i, ln in enumerate(lines):
+            if ln.strip().startswith("```"):
+                in_code = not in_code
+                continue
+            if in_code:
+                continue
+            if "片段示意" in ln and "代码块" in ln:
+                window = lines[i + 1: i + 13]
+                if not any(s.strip().startswith("```") for s in window):
+                    issues.append(_issue("P0", "QG-07",
+                                         f"片段示意注记后缺代码块（{p.name}:{i + 1}）",
+                                         p, i + 1))
+        # ② spec 主张行的 E 号必须存在，且与台账 claim 对得上
+        spec = p.with_name(p.stem + ".spec.md")
+        if not spec.is_file():
+            continue
+        for j, ln in enumerate(read(spec).splitlines(), 1):
+            m = re.match(r"^\|\s*A\d+\s*\|(.+?)\|(?:[^|]*)\|(?:[^|]*)\|([^|]*)\|", ln)
+            if not m:
+                continue
+            em = re.search(r"E-\d{3}", m.group(2))
+            if not em:
+                continue
+            eid = em.group(0)
+            if eid not in ledger_claims:
+                issues.append(_issue("P0", "EVD-18",
+                                     f"{spec.name}:{j} 挂了台账不存在的 {eid}",
+                                     spec, j))
+                continue
+            claim = m.group(1).strip()
+            lc = ledger_claims[eid]
+            if claim and lc and difflib.SequenceMatcher(None, claim, lc).ratio() < 0.5:
+                # 收紧口径（P23-5 调优）：只有当主张明显更像另一条台账时才提示
+                # 错挂并给出应挂 E 号；措辞近似不足不打扰
+                best_eid, best_ratio = "", 0.0
+                for cand, cl in ledger_claims.items():
+                    ratio = difflib.SequenceMatcher(None, claim, cl).ratio()
+                    if ratio > best_ratio:
+                        best_eid, best_ratio = cand, ratio
+                if best_eid and best_eid != eid and best_ratio >= 0.7:
+                    issues.append(_issue(
+                        "P1", "EVD-19",
+                        f"{spec.name}:{j} 疑似错挂 {eid}：主张与 {best_eid} 的台账 claim "
+                        f"几乎相同（相似度 {best_ratio:.2f}）", spec, j))
+    return issues
+
+
 def run_checks(book: Path) -> tuple[list[dict], list[dict]]:
     book = book.resolve()
     root = resolve_root(book)
@@ -982,6 +1059,7 @@ def run_checks(book: Path) -> tuple[list[dict], list[dict]]:
         issues += check_deviations(root, wf)
     if (root / "04_ledger.csv").is_file() or unit_files(root):
         issues += check_evidence(root, outline, contract)
+        issues += check_spec_and_blocks(root)
     issues += check_code(root)
     issues += check_code_project(root)
     issues += check_contract_deliverables(root, contract)

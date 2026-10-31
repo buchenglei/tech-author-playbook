@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 LINT = ROOT / "writing-rules" / "tools" / "spec_lint.py"
 MD2TYP = ROOT / "techbook-typst" / "tools" / "md2typ.py"
+QG = ROOT / "writing-rules" / "tools" / "quality_gate.py"
 SYNC = ROOT / "writing-rules" / "tools" / "sync_handoff.py"
 BOOK = ROOT / "books" / "how-to-write-a-tech-book"
 sys.path.insert(0, str(ROOT / "writing-rules" / "tools"))
@@ -252,6 +253,40 @@ def main() -> int:
         check("图片引用相对输出重定位（P23）",
               '#fig(image("../units/pic.png"' in t5,
               t5[:300] + r.stdout + r.stderr)
+
+    print("== quality_gate 三查（P22/P23）==")
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        (td / "units").mkdir()
+        (td / "workflow").mkdir()
+        (td / "emptydir").mkdir()
+        cols = ("id,claim,level,source_title,url,version,locator,cmd,exit_code,"
+                "output_hash,date,unit\n")
+        (td / "04_ledger.csv").write_text(
+            cols + "E-001,完全不同的台账主张：实测输出 foo,E0,src,repo:x,1,loc,cmd,0,h,2026-01-01,C01-S1\n"
+            "E-002,这句主张的写法与台账完全不同啊,E0,src,repo:x,1,loc,cmd,0,h,2026-01-01,C01-S1\n",
+            encoding="utf-8")
+        (td / "units" / "C01-S1.md").write_text(
+            "# 节\n\n正文。\n\n<!-- src: a.cs:1-9 -->\n\n"
+            "片段示意：下方代码块从该区间中摘出。\n\n后面没有代码块。\n",
+            encoding="utf-8")
+        (td / "units" / "C01-S1.spec.md").write_text(
+            "# spec\n\n| 项 | 主张 | 级别 | 来源 | 台账 |\n| --- | --- | --- | --- | --- |\n"
+            "| A1 | 台账里根本没有的主张 | E0 | 来源 | E-999 |\n"
+            "| A2 | 这句主张的写法与台账完全不同啊 | E0 | 来源 | E-001 |\n",
+            encoding="utf-8")
+        (td / "workflow" / "00_大纲合同.json").write_text(
+            '{"deliverables": ["emptydir"]}', encoding="utf-8")
+        r = run([sys.executable, str(QG), str(td), "--json"])
+        # --json 打到 stdout
+        d = json.loads(r.stdout[r.stdout.find("{"):] if "{" in r.stdout else "{}")
+        rules = [i.get("rule_id") for i in d.get("P0", []) + d.get("P1", [])]
+        check("QG-07 缺块检出", "QG-07" in rules, str(rules))
+        check("EVD-18 挂不存在 E 号检出", "EVD-18" in rules, str(rules))
+        check("EVD-19 错挂提示检出", "EVD-19" in rules, str(rules))
+        shell = [i for i in d.get("P0", []) if i.get("rule_id") == "CTR-01"
+                 and "空壳" in i.get("msg", "")]
+        check("CTR-01 空壳检出", bool(shell), str(rules))
 
     print("== sync_handoff ==")
     with tempfile.TemporaryDirectory() as td:
