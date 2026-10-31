@@ -240,6 +240,19 @@ def main() -> int:
         check("md2typ 引用转 #quote", "#quote[" in text2 and "引用一行" in text2, text2[:500])
         check("md2typ 表注取 caption", "caption: [对照表]" in text2, text2[:500])
 
+        # P23 回归：无 --asset-dir 时，图片引用必须相对输出文件重定位
+        #（装配产物不能沿用单元视角的路径——Avalonia 重构实证：../typst/assets 会指错）
+        (td / "units").mkdir()
+        (td / "units" / "pic.png").write_bytes(b"x")
+        f5 = td / "units" / "m.md"
+        f5.write_text("# t\n\n![图](pic.png)\n", encoding="utf-8")
+        out5 = td / "out2" / "ch.typ"
+        r = run([sys.executable, str(MD2TYP), str(f5), "--title", "章", "-o", str(out5)])
+        t5 = out5.read_text(encoding="utf-8") if out5.is_file() else ""
+        check("图片引用相对输出重定位（P23）",
+              '#fig(image("../units/pic.png"' in t5,
+              t5[:300] + r.stdout + r.stderr)
+
     print("== sync_handoff ==")
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)

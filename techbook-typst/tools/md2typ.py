@@ -140,6 +140,10 @@ class Converter:
             self.warnings.append(f"图片不存在：{src}（来自 {self.source_path.name}）")
             return src
         if self.asset_dir is None:
+            # 资源原地不动，但引用必须相对输出文件重定位（P23：装配产物
+            # 若沿用单元视角的路径，落位到 chapters/ 后会指错目录）
+            if self.output_dir is not None:
+                return os.path.relpath(p, self.output_dir).replace("\\", "/")
             return src
         dest = self.asset_dir / self.source_path.stem / p.name
         dest.parent.mkdir(parents=True, exist_ok=True)
