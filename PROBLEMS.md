@@ -255,5 +255,5 @@
 ### 回补（2026-11-01，仓库维护轮）
 
 P22 修法 1（交付物健全性）与 2（反例预期失败清单）已完成：CTR-01 空壳判定、\code/expected-failures.txt\ + check_code_project 全量构建（commit ffe4fb7 / 1944f14）。
-P23 修法 1（spec↔ledger 对账 → EVD-18/19）、2（注记↔缺块 → QG-07）、4（装配资源重定位 → md2typ）、5（禁用词单一真源 → --print-forbidden，补「留意/不难」）已完成（commit 1944f14 / 94b585e / 9c5b983）；修法 3（数字-台账对账提示）留待下轮。
+P23 修法 1（spec↔ledger 对账 → EVD-18/19）、2（注记↔缺块 → QG-07）、4（装配资源重定位 → md2typ）、5（禁用词单一真源 → --print-forbidden，补「留意/不难」）已完成（commit 1944f14 / 94b585e / 9c5b983）；修法 3（数字-台账对账提示 → EVD-20）亦已完成。
 附录计数撞名已由引擎 \#appendix(letter:)\ 支持（719abad）。验证：run_tests 120 passed、金样板 G0–G7 全 P0=0、quality_gate PASS、引擎 doctor/lint/book 全绿（G8 为结构示范书预期红）。

@@ -1096,6 +1096,41 @@ def check_spec_and_blocks(root: Path) -> list[dict]:
     return issues
 
 
+# P23 修法 3：数字-台账对账提示。度量类数字（小数或带单位）在正文出现却不见于
+# 台账/规格任一处时给提示——Avalonia 审校实证 ~30 例数字口径错位（差值当倍数、
+# 百分比反写、量词错位），先提示再裁定，不做硬断言（散文数字合法来源多样）。
+NUM_HINT_RE = re.compile(r"\d+(?:\.\d+)?\s*(?:%|ms|MB|KB|GB|px|倍|毫秒|微秒|字节|像素|帧)")
+NUM_ANY_RE = re.compile(r"\d+(?:\.\d+)?")
+
+
+def check_number_ledger(root: Path) -> list[dict]:
+    issues: list[dict] = []
+    pool: set[str] = set()
+    lp = root / "04_ledger.csv"
+    if lp.is_file():
+        pool |= set(NUM_ANY_RE.findall(read(lp)))
+    for p in unit_files(root):
+        spec = p.with_name(p.stem + ".spec.md")
+        allowed = set(pool)
+        if spec.is_file():
+            allowed |= set(NUM_ANY_RE.findall(read(spec)))
+        in_code = False
+        for i, ln in enumerate(read(p).splitlines(), 1):
+            if ln.strip().startswith("```"):
+                in_code = not in_code
+                continue
+            if in_code:
+                continue
+            for m in NUM_HINT_RE.finditer(ln):
+                val = NUM_ANY_RE.search(m.group(0))
+                if val and val.group(0) not in allowed:
+                    issues.append(_issue(
+                        "P2", "EVD-20",
+                        f"度量数字未见台账/规格：{m.group(0).strip()}（建议挂账或标注推断）",
+                        p, i))
+    return issues
+
+
 def run_checks(book: Path) -> tuple[list[dict], list[dict]]:
     book = book.resolve()
     root = resolve_root(book)
@@ -1115,6 +1150,7 @@ def run_checks(book: Path) -> tuple[list[dict], list[dict]]:
     if (root / "04_ledger.csv").is_file() or unit_files(root):
         issues += check_evidence(root, outline, contract)
         issues += check_spec_and_blocks(root)
+        issues += check_number_ledger(root)
     issues += check_code(root)
     issues += check_code_project(root)
     issues += check_contract_deliverables(root, contract)

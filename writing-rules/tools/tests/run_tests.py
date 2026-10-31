@@ -336,6 +336,30 @@ def main() -> int:
               any(i.get("rule_id") == "CODE-05" for i in d.get("P0", [])),
               str(d.get("P0", []))[:300])
 
+    print("== quality_gate 数字-台账对账（P23 修法 3）==")
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        (td / "units").mkdir()
+        cols = ("id,claim,level,source_title,url,version,locator,cmd,exit_code,"
+                "output_hash,date,unit\n")
+        (td / "04_ledger.csv").write_text(
+            cols + "E-001,实测延迟 12.5 毫秒,E0,src,repo:x,1,loc,cmd,0,h,2026-01-01,C01-S1\n",
+            encoding="utf-8")
+
+        def qg2(body):
+            (td / "units" / "C01-S1.md").write_text(body, encoding="utf-8")
+            r = run([sys.executable, str(QG), str(td), "--json"])
+            return json.loads(r.stdout[r.stdout.find("{"):] if "{" in r.stdout else "{}")
+
+        d = qg2("# t\n\n实测延迟 12.5 毫秒，回归基线是 88.2 毫秒。\n")
+        hits = [i for i in d.get("P1", []) if i.get("rule_id") == "EVD-20"]
+        check("未见台账的度量数字提示（P23-3）",
+              any("88.2" in i.get("msg", "") for i in hits)
+              and not any("12.5" in i.get("msg", "") for i in hits), str(hits))
+        d = qg2("# t\n\n实测延迟 12.5 毫秒。\n")
+        hits = [i for i in d.get("P1", []) if i.get("rule_id") == "EVD-20"]
+        check("台账已有的数字不提示（P23-3）", not hits, str(hits))
+
     print("== sync_handoff ==")
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
