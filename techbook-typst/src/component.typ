@@ -299,7 +299,9 @@
 }
 
 /// 附录起始：附录 A / B / C …，图注改用 A-1
-#let appendix(title) = {
+/// letter 可显式指定（如 "F"）：正文章题若已内嵌「附录 A–E」等名号，
+/// 自动字母会撞名（Avalonia 实证：速查附录与正文章的「附录 A」重名）。
+#let appendix(title, letter: none) = {
   pagebreak(weak: true)
   context {
     let t = get-tokens()
@@ -309,7 +311,9 @@
     counter(figure.where(kind: "fig")).update(0)
     counter(figure.where(kind: "tbl")).update(0)
     counter(figure.where(kind: "raw")).update(0)
-    let letter = if n <= 26 { str.from-unicode(64 + n) } else { str(n) }
+    let letter = if letter != none { letter } else if n <= 26 {
+      str.from-unicode(64 + n)
+    } else { str(n) }
     heading(level: 1, numbering: none, outlined: true)[
       #text(fill: t.accent, weight: 700)[附录#h(0.45em)#letter]#h(0.6em)#title
     ]

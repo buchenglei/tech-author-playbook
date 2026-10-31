@@ -5,6 +5,8 @@
 ## [Unreleased]
 
 ### Added
+- `quality_gate` 三查（P22/P23 实证补缺）：`EVD-18` spec 挂不存在的 E 号（P0）、`EVD-19` 错挂提示（主张明显更像另一条台账时给应挂 E 号）、`QG-07`「片段示意」注记后缺代码块（P0）、`CTR-01` 交付物空壳判定（glob 存在≠齐备）。Avalonia 书稿实测抓到 2 组 +10 整表错挂与 1 处漏网缺块
+- 引擎 `#appendix[标题, letter: "F"]` 显式字母参数：正文章题内嵌「附录 A–E」名号时防撞名（Avalonia 速查附录实证）；AGENTS 补「附录内小节会沿用上一章章号」的规避写法
 - **章循环批量工作流**（长任务一致性）：批量期不再「Agent 一气呵成」——默认每 2–3 章一批（`review_every_n_chapters`），批内写作→三角色自审→《章审包》→**人签字（改了什么/裁了什么，空签字无效）**→该批才 frozen；人的调整回写宪法（规则更新而非一次性 patch）。新增模板 `10_章审包.md`、`11_写作者上下文包.md`（每批自包含上下文）与 `deviations.jsonl`
 - **申报制自由度**（治死板）：合同 `form_freedom: true` + `freedom_scope` 4 项章级放开（引入方式/图表密度/句长段长软化/题材口吻幽默）；形式类检查（L-FORM-01/02、LANG-05/11/12）降 P1 提示，有意偏离登记 `deviations.jsonl` 由人逐条裁决（追认=入宪法/收敛=记反例）；硬线（真实性/证据/禁用词/代码可跑/冻结纪律）永不降级。书级结构（章末固定块、附录形态）不逐章放开，走 09 整书裁决
 - **章签名校验**：WF-26 frozen 单元必须被人签字覆盖、WF-27 空签字无效、DEV-01 待裁偏离、DEV-02 签字了却未裁决（走过场）；`spec_lint --soft-form` 与 `run_gates` 合同透传
@@ -22,6 +24,8 @@
 - 四阶段写书工作流 `writing-rules/workflow/`（角色/报告模板/加载卡）、`00_阶段状态.json` 人类闸门字段、CLAUDE/AGENTS/README 三行入口判别器
 
 ### Fixed
+- `md2typ` 无 `--asset-dir` 时图片引用按「源文件真实位置 → 输出目录」重定位（此前沿用单元视角路径，装配产物落位 `chapters/` 后指错；Avalonia 重构 P23 实证）
+- 引擎字链族名与代码高亮（Avalonia PDF 实证）：族名改规范名 `Noto Serif SC` 等 + mono 补 CJK 兜底（曾全书方块）；行内 raw 药丸规则不再吞掉主题着色、`csharp` 别名归一 `cs`（曾代码块全黑）
 - `md2typ` 行内代码走字符串通道 `#code("...")` + `markup_escape()` 12 字符转义（Avalonia 案例 P17：`List<T>`、`x:DataType="vm:Boo"`、`_斜体_` 曾被 Typst 当 markup 再解析而编译失败）；加粗/链接文本/标题/表格单元分通道渲染；写书会话工具回流
 - EVD-17 误报：`repo:` 按契约解析 playbook 本库（`REPO_ROOT`），金样板 `repo:writing-rules/spec/…` 不再判悬空；随书工程仍解析书稿内
 - 工具误报与崩溃（三案实证）：GBK stdout 崩溃；LANG-05 把注释/英文引文/双反引号计句长；L-FORM-01 漏去冒号挂牌；CODE-03 误报属性读取 `var x = a.B;`；CODE-04 误报多行 `new`；子进程 UTF-8 解码
