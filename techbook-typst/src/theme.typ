@@ -126,6 +126,9 @@
   show raw.where(block: true): it => wrap-raw(it)
   show raw.where(block: false): it => context {
     let t2 = ctx.tokens
+    // 带语言名的 raw 是代码框里的逐行高亮单元：直通保留主题着色；
+    // 散文行内代码（无语言）继续走药丸样式
+    if it.lang != none { return it }
     if not t2.code-inline-wrap {
       return text(font: t2.fonts.mono, size: t2.size.small - 0.2pt, fill: rgb("#24292f"), it.text)
     }

@@ -35,6 +35,12 @@
   let mono-font = t.fonts.mono
   let code = if type(code-text) == str { code-text } else { str(code-text) }
   let lang-str = if lang == none { "text" } else { str(lang) }
+  // 高亮语言名归一：syntect 只认 cs/sh 等规范别名，csharp/c# 等写法不命中（角标仍显原文案）
+  let hl-lang = (
+    "csharp": "cs", "c#": "cs", "csx": "cs",
+    "shell": "sh", "console": "sh", "zsh": "sh",
+    "py": "python", "yml": "yaml",
+  ).at(lang-str, default: lang-str)
   let rows = code.trim("\n").split("\n")
   let nlines = rows.len()
   let show-lines = lines and nlines > 1
@@ -68,7 +74,7 @@
             ]
             h(t.space.xs)
           }
-          raw(ln, lang: lang-str, block: false)
+          raw(ln, lang: hl-lang, block: false)
           if i < nlines - 1 { linebreak() }
         }
       ]
