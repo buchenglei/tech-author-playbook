@@ -35,7 +35,7 @@
 
 ```bash
 # 拼成单文件（调试 / 单页阅读）
-python3 tools/build_spec.py --write /tmp/技术书籍写作规范_v1.md
+python3 tools/build_spec.py --write /tmp/写作规范导出.md
 
 # 按正文重新生成附录 A（写回 spec/A-规则总表.md）
 python3 tools/spec_lint.py spec/ --registry --write
