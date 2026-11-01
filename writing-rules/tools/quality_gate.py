@@ -654,7 +654,7 @@ def check_code_project(root: Path) -> list[dict]:
         return []
     all_projects = sorted({p for p in
                            list(code.rglob("*.sln")) + list(code.rglob("*.slnx"))
-                           + list(code.rglob("*.csproj"))
+                           + list(code.rglob("*.csproj")) + list(code.rglob("*.fsproj"))
                            if "bin" not in p.parts and "obj" not in p.parts})
     if not all_projects:
         return []
