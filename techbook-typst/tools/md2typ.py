@@ -107,11 +107,11 @@ def md_table_to_typst(lines: list[str], caption: str | None = None) -> str:
     parts = [
         "#tbl(",
         "  columns: (" + ", ".join(["1fr"] * len(header)) + "),",
-        "  header: (" + ", ".join(f"[{render_cell(h)}]" for h in header) + "),",
+        "  header: (" + ", ".join(f"[{render_cell(h)}]" for h in header) + ",),",
     ]
     for r in body:
         r = (r + [""] * len(header))[: len(header)]
-        parts.append("  (" + ", ".join(f"[{render_cell(c)}]" for c in r) + "),")
+        parts.append("  (" + ", ".join(f"[{render_cell(c)}]" for c in r) + ",),")
     if caption:
         parts.append(f"  caption: [{render_cell(caption)}],")
     else:

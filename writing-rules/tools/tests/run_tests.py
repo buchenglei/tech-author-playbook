@@ -253,6 +253,16 @@ def main() -> int:
         check("md2typ 引用转 #quote", "#quote[" in text2 and "引用一行" in text2, text2[:500])
         check("md2typ 表注取 caption", "caption: [对照表]" in text2, text2[:500])
 
+        # 回归：单列表格必须发射数组（尾逗号）——header: ([A]) 是括号不是数组，
+        # Typst 引擎 header.map 会崩（F# 书重构实证）
+        f5b = td / "one.md"
+        f5b.write_text("# t\n\n| 项 |\n| --- |\n| 唯一一行 |\n", encoding="utf-8")
+        out5b = td / "one.typ"
+        run([sys.executable, str(MD2TYP), str(f5b), "--title", "章", "-o", str(out5b)])
+        t5b = out5b.read_text(encoding="utf-8") if out5b.is_file() else ""
+        check("单列表格发射数组（尾逗号）",
+              "header: ([项],)," in t5b and "([唯一一行],)," in t5b, t5b[:300])
+
         # P23 回归：无 --asset-dir 时，图片引用必须相对输出文件重定位
         #（装配产物不能沿用单元视角的路径——Avalonia 重构实证：../typst/assets 会指错）
         (td / "units").mkdir()
