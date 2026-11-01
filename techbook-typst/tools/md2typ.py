@@ -67,8 +67,22 @@ MARKUP_ESCAPES = {
 
 
 def markup_escape(s: str) -> str:
-    """把普通文本转成 Typst markup 安全文本（不处理引号，保留 smart quote）。"""
-    return "".join(MARKUP_ESCAPES.get(ch, ch) for ch in s)
+    """把普通文本转成 Typst markup 安全文本（不处理引号，保留 smart quote）。
+
+    已转义序列（\\#、\\* 等作者手写 Markdown 转义）按 Typst 同义**直通**为单层
+    转义——否则会被二次转义成 \\\\\\#，PDF 印出可见反斜杠（F# 书实证：C\\# 显示成 C\\\#）。
+    """
+    out = []
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        if ch == "\\" and i + 1 < len(s) and s[i + 1] in MARKUP_ESCAPES:
+            out.append("\\" + s[i + 1])
+            i += 2
+            continue
+        out.append(MARKUP_ESCAPES.get(ch, ch))
+        i += 1
+    return "".join(out)
 
 
 def typst_string(s: str) -> str:

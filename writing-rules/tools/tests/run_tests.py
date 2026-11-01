@@ -232,6 +232,18 @@ def main() -> int:
               '#code("List<T>")' in t4 and "\\_斜体\\_" in t4,
               t4[:400] + r.stdout + r.stderr)
 
+        # 回归：作者手写 Markdown 转义（C\#）须直通为单层转义——
+        # 二次转义会印出可见反斜杠（F# 书 PDF 实证「F\\\#」）
+        f4b = td / "esc.md"
+        f4b.write_text("# F\\# 不是 C\\# 的另一种写法\n\n正文里写 C\\# 与 F\\#。\n",
+                       encoding="utf-8")
+        out4b = td / "esc.typ"
+        run([sys.executable, str(MD2TYP), str(f4b), "--title", "章", "-o", str(out4b)])
+        t4b = out4b.read_text(encoding="utf-8") if out4b.is_file() else ""
+        check("已转义序列直通（F# 书 P25）",
+              "C\\#" in t4b and "C\\\\\\#" not in t4b and "F\\#" in t4b,
+              t4b[:300])
+
         # 图 / 链接 / 引用 / 表注 / 资源复制
         (td / "fig").mkdir()
         (td / "fig" / "a.png").write_bytes(b"x")
